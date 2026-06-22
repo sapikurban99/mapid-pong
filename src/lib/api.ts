@@ -75,10 +75,19 @@ export const api = {
   getMatches: async (): Promise<Match[]> => {
     const { data, error } = await supabase
       .from("mapidpong_matches")
-      .select("*")
-      .order("updated_at", { ascending: false });
+      .select("*");
     if (error) throw error;
-    return data as Match[];
+    
+    const statusWeight = { live: 1, upcoming: 2, finished: 3 };
+    const matches = data as Match[];
+    matches.sort((a, b) => {
+      if (statusWeight[a.status] !== statusWeight[b.status]) {
+        return statusWeight[a.status] - statusWeight[b.status];
+      }
+      return (a.match_order || 0) - (b.match_order || 0);
+    });
+    
+    return matches;
   },
   updateScore: async (
     matchId: string,

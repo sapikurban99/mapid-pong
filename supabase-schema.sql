@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS mapidpong_matches (
   match_type TEXT NOT NULL DEFAULT 'singles' CHECK (match_type IN ('singles', 'doubles')),
   group_name TEXT,
   round TEXT NOT NULL DEFAULT 'group',
+  match_order INTEGER,
   referee_name TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

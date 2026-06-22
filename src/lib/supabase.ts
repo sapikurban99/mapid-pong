@@ -15,6 +15,7 @@ export type Match = {
   match_type: "singles" | "doubles";
   group_name: string | null;
   round: string;
+  match_order: number | null;
   referee_name: string | null;
   created_at: string;
   updated_at: string;

@@ -90,7 +90,7 @@ export default function LiveScore({ matches }: LiveScoreProps) {
             <div key={match.id} className={`box-neo p-6 transition-all ${match.status === "live" ? "bg-pink/10 border-pink" : "bg-white/5 border-black"}`}>
               <div className="flex justify-between items-center mb-4">
                 <span className="font-mono text-[10px] font-bold text-white/50 tracking-wider uppercase">
-                  {match.round} {match.group_name && `/ ${match.group_name}`}
+                  MATCH #{match.match_order || '?'} • {match.round} {match.group_name && `/ ${match.group_name}`}
                 </span>
                 <span className={`font-mono text-[10px] font-bold px-3 py-1 border-2 border-black uppercase ${match.status === "live" ? "bg-pink text-white" : match.status === "finished" ? "bg-green text-black" : "bg-white/20 text-white"
                   }`}>

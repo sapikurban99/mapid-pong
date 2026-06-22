@@ -28,6 +28,17 @@ export async function POST(request: Request) {
 
     // 3. Insert Matches
     if (matches && matches.length > 0) {
+      // Shuffle the matches array to interleave groups
+      for (let i = matches.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [matches[i], matches[j]] = [matches[j], matches[i]];
+      }
+
+      // Assign match_order
+      matches.forEach((m: any, index: number) => {
+        m.match_order = index + 1;
+      });
+
       const { error: insertMatchesError } = await supabase
         .from("mapidpong_matches")
         .insert(matches);
