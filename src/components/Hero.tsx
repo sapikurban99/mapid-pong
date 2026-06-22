@@ -3,10 +3,12 @@ import Image from "next/image";
 
 interface HeroProps {
   participantCount: number;
+  singlesCount: number;
+  doublesCount: number;
   liveMatchCount: number;
 }
 
-export default function Hero({ participantCount, liveMatchCount }: HeroProps) {
+export default function Hero({ participantCount, singlesCount, doublesCount, liveMatchCount }: HeroProps) {
   return (
     <section id="home" className="relative min-h-[calc(100vh-64px)] flex flex-col items-center justify-center text-center p-6 bg-navy overflow-hidden z-10">
       {/* Background Gradient Decorative Neo Brutalism Mesh */}
@@ -39,19 +41,19 @@ export default function Hero({ participantCount, liveMatchCount }: HeroProps) {
       <div className="flex flex-wrap justify-center gap-10 mt-16 max-w-4xl w-full">
         <div className="text-center min-w-[100px]">
           <div className="text-4xl md:text-5xl font-bold font-mono text-blue">{participantCount}</div>
-          <div className="text-[10px] font-mono tracking-widest text-white/50 uppercase mt-1">Peserta</div>
+          <div className="text-[10px] font-mono tracking-widest text-white/50 uppercase mt-1">Total Peserta</div>
         </div>
         <div className="text-center min-w-[100px]">
-          <div className="text-4xl md:text-5xl font-bold font-mono text-pink">{liveMatchCount}</div>
+          <div className="text-4xl md:text-5xl font-bold font-mono text-pink">{singlesCount}</div>
+          <div className="text-[10px] font-mono tracking-widest text-white/50 uppercase mt-1">Singles</div>
+        </div>
+        <div className="text-center min-w-[100px]">
+          <div className="text-4xl md:text-5xl font-bold font-mono text-blue">{doublesCount}</div>
+          <div className="text-[10px] font-mono tracking-widest text-white/50 uppercase mt-1">Doubles</div>
+        </div>
+        <div className="text-center min-w-[100px]">
+          <div className="text-4xl md:text-5xl font-bold font-mono text-green">{liveMatchCount}</div>
           <div className="text-[10px] font-mono tracking-widest text-white/50 uppercase mt-1">Live Match</div>
-        </div>
-        <div className="text-center min-w-[100px]">
-          <div className="text-4xl md:text-5xl font-bold font-mono text-green">4</div>
-          <div className="text-[10px] font-mono tracking-widest text-white/50 uppercase mt-1">Grup Instansi</div>
-        </div>
-        <div className="text-center min-w-[100px]">
-          <div className="text-4xl md:text-5xl font-bold font-mono text-yellow">1</div>
-          <div className="text-[10px] font-mono tracking-widest text-white/50 uppercase mt-1">Juara Abadi</div>
         </div>
       </div>
     </section>

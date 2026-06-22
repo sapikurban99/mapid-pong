@@ -1,237 +1,216 @@
 "use client"
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { Player } from "@/lib/api";
 
 type GroupName = "A" | "B" | "C" | "D";
-interface DrawnPlayer {
+type DrawPhase = "config" | "assign";
+type DrawnPlayer = {
   id: string;
   name: string;
   wa: string;
   group_name: GroupName;
   type: "singles" | "doubles";
-}
+};
+type DbPlayer = { id: string; name: string; wa: string | null; group_name: string | null; type: string };
 
 export default function LiveDrawingPage() {
+  // Data
   const [registrants, setRegistrants] = useState<Player[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Configuration
+  // Config
   const [type, setType] = useState<"singles" | "doubles">("singles");
-  const [groupCount, setGroupCount] = useState<number>(4);
+  const [groupCount, setGroupCount] = useState(4);
+  const [startDate, setStartDate] = useState("2026-07-06");
+  const [endDate, setEndDate] = useState("2026-07-17");
+  const [skipWeekends, setSkipWeekends] = useState(true);
 
-  // Scheduling Configuration
-  const [startDate, setStartDate] = useState<string>("2026-07-06");
-  const [endDate, setEndDate] = useState<string>("2026-07-17");
-  const [skipWeekends, setSkipWeekends] = useState<boolean>(true);
+  // Phase
+  const [phase, setPhase] = useState<DrawPhase>("config");
 
-  // Drawing state
-  const [drawingState, setDrawingState] = useState<"idle" | "drawing" | "completed">("idle");
-  const [drawnGroups, setDrawnGroups] = useState<Record<GroupName, DrawnPlayer[]>>({
+  // Existing data from DB
+  const [existingSingles, setExistingSingles] = useState<DrawnPlayer[]>([]);
+  const [existingDoubles, setExistingDoubles] = useState<DrawnPlayer[]>([]);
+
+  // Assign state
+  const [unassigned, setUnassigned] = useState<DrawnPlayer[]>([]);
+  const [groups, setGroups] = useState<Record<GroupName, DrawnPlayer[]>>({
     A: [], B: [], C: [], D: []
   });
-  const [currentDrawingItem, setCurrentDrawingItem] = useState<string>("");
-  const [isRolling, setIsRolling] = useState<boolean>(false);
-  const [drawProgress, setDrawProgress] = useState<number>(0);
 
-  // Save states
-  const [saving, setSaving] = useState<boolean>(false);
-  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  // Save
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [showConfirmSave, setShowConfirmSave] = useState<boolean>(false);
 
+  const activeGroups = (["A", "B", "C", "D"] as GroupName[]).slice(0, groupCount);
+
+  // Load existing data from Supabase
+  async function loadExisting() {
+    try {
+      const { data: players } = await supabase
+        .from("mapidpong_players")
+        .select("id, name, wa, group_name, type")
+        .order("group_name");
+
+      const playerRows = (players || []) as DbPlayer[];
+
+      const singles = playerRows
+        .filter(p => p.type === "singles" && p.group_name)
+        .map(p => ({
+          id: p.id,
+          name: p.name,
+          wa: p.wa || "",
+          group_name: p.group_name as GroupName,
+          type: "singles" as const
+        }));
+
+      const doubles = playerRows
+        .filter(p => p.type === "doubles" && p.group_name)
+        .map(p => ({
+          id: p.id,
+          name: p.name,
+          wa: p.wa || "",
+          group_name: p.group_name as GroupName,
+          type: "doubles" as const
+        }));
+
+      setExistingSingles(singles);
+      setExistingDoubles(doubles);
+    } catch (err) {
+      console.error("Gagal memuat data existing:", err);
+    }
+  }
+
+  useEffect(() => {
+    loadExisting();
+  }, []);
+
+  // Load registrants from API
   useEffect(() => {
     async function fetchRegistrants() {
       try {
         const res = await fetch("/api/players");
-        if (!res.ok) {
-          throw new Error("Gagal mengambil data dari API.");
-        }
+        if (!res.ok) throw new Error("Gagal mengambil data dari API.");
         const data: Player[] = await res.json();
         setRegistrants(data);
-        // Initially select all
-        setSelectedIds(new Set(data.map(p => p.id)));
       } catch (err: any) {
-        console.error(err);
         setError(err.message || "Terjadi kesalahan saat memuat pendaftar.");
       } finally {
         setLoading(false);
       }
     }
-
     fetchRegistrants();
   }, []);
 
-  const toggleSelect = (id: string) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
+  const getExistingForType = () => type === "singles" ? existingSingles : existingDoubles;
+
+  // Enter assign phase
+  const startAssign = () => {
+    const existing = getExistingForType();
+    if (existing.length > 0) {
+      if (!confirm(`Data ${type} sudah ada. Ingin redraw? Data lama akan dihapus saat save.`)) {
+        return;
+      }
     }
-    setSelectedIds(next);
-  };
-
-  const selectAll = () => {
-    setSelectedIds(new Set(registrants.map(p => p.id)));
-  };
-
-  const selectNone = () => {
-    setSelectedIds(new Set());
-  };
-
-  // Helper to shuffle array
-  const shuffle = <T,>(arr: T[]): T[] => {
-    const newArr = [...arr];
-    for (let i = newArr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
-    }
-    return newArr;
-  };
-
-  // Run the Live Drawing Animation
-  const startDrawing = async () => {
-    if (selectedIds.size === 0) {
-      alert("Pilih minimal 1 pendaftar!");
-      return;
-    }
-
-    setDrawingState("drawing");
+    setGroups({ A: [], B: [], C: [], D: [] });
+    setUnassigned([]);
     setSaveSuccess(false);
     setSaveError(null);
-    
-    // Clear groups
-    setDrawnGroups({ A: [], B: [], C: [], D: [] });
-
-    // Prepare participants list
-    const selectedPlayers = registrants.filter(r => selectedIds.has(r.id));
-    
-    let itemsToDraw: { name: string; id: string; wa: string }[] = [];
-
-    if (type === "singles") {
-      itemsToDraw = selectedPlayers.map(p => ({
-        id: p.id,
-        name: p.name,
-        wa: p.wa
-      }));
-    } else {
-      // Doubles: Pair up players randomly
-      const shuffledPlayers = shuffle(selectedPlayers);
-      const pairs: typeof itemsToDraw = [];
-      for (let i = 0; i < shuffledPlayers.length; i += 2) {
-        if (i + 1 < shuffledPlayers.length) {
-          pairs.push({
-            id: `${shuffledPlayers[i].id}-${shuffledPlayers[i+1].id}`,
-            name: `${shuffledPlayers[i].name} & ${shuffledPlayers[i+1].name}`,
-            wa: `${shuffledPlayers[i].wa} / ${shuffledPlayers[i+1].wa}`
-          });
-        } else {
-          // Odd player left out, gets paired with "TBD Partner" or stays single team
-          pairs.push({
-            id: shuffledPlayers[i].id,
-            name: `${shuffledPlayers[i].name} & TBD`,
-            wa: shuffledPlayers[i].wa
-          });
-        }
-      }
-      itemsToDraw = pairs;
-    }
-
-    const shuffledItems = shuffle(itemsToDraw);
-    const groups: GroupName[] = ["A", "B", "C", "D"].slice(0, groupCount) as GroupName[];
-    
-    const tempGroups: Record<GroupName, DrawnPlayer[]> = {
-      A: [], B: [], C: [], D: []
-    };
-
-    // Draw one by one with slot machine animation
-    for (let i = 0; i < shuffledItems.length; i++) {
-      const currentItem = shuffledItems[i];
-      setIsRolling(true);
-
-      // Roll effect: rapidly cycle through remaining items
-      const rollDuration = 600; // ms
-      const intervalTime = 60; // ms
-      const startTime = Date.now();
-
-      await new Promise<void>((resolve) => {
-        const timer = setInterval(() => {
-          const elapsed = Date.now() - startTime;
-          if (elapsed >= rollDuration) {
-            clearInterval(timer);
-            resolve();
-          } else {
-            // Pick a random remaining item to show
-            const remIdx = Math.floor(Math.random() * (shuffledItems.length - i)) + i;
-            setCurrentDrawingItem(shuffledItems[remIdx].name);
-          }
-        }, intervalTime);
-      });
-
-      setIsRolling(false);
-      setCurrentDrawingItem(currentItem.name);
-
-      // Flash/Delay on chosen name
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Assign to group (round-robin)
-      const groupName = groups[i % groups.length];
-      const drawnObj: DrawnPlayer = {
-        id: currentItem.id,
-        name: currentItem.name,
-        wa: currentItem.wa,
-        group_name: groupName,
-        type: type
-      };
-
-      tempGroups[groupName].push(drawnObj);
-      setDrawnGroups({ ...tempGroups });
-      setDrawProgress(Math.round(((i + 1) / shuffledItems.length) * 100));
-
-      // Small break before drawing next player
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-
-    setDrawingState("completed");
-    setCurrentDrawingItem("");
+    setPhase("assign");
   };
 
-  // Reset/Clear DB on Supabase and Save new Draw
+  // Add registrants to unassigned pool
+  const addToPool = (players: Player[]) => {
+    const existingIds = new Set([
+      ...unassigned.map(p => p.id),
+      ...Object.values(groups).flat().map(p => p.id)
+    ]);
+    const existingForType = getExistingForType();
+    const existingNames = new Set(existingForType.map(p => p.name));
+
+    const newPlayers: DrawnPlayer[] = players
+      .filter(p => !existingIds.has(p.id) && !existingNames.has(p.name))
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        wa: p.wa,
+        group_name: "A" as GroupName,
+        type
+      }));
+
+    setUnassigned(prev => [...prev, ...newPlayers]);
+  };
+
+  const removeFromPool = (id: string) => {
+    setUnassigned(prev => prev.filter(p => p.id !== id));
+  };
+
+  // Assign player to group (singles)
+  const assignToGroup = (player: DrawnPlayer, group: GroupName) => {
+    setUnassigned(prev => prev.filter(p => p.id !== player.id));
+    setGroups(prev => ({
+      ...prev,
+      [group]: [...prev[group], { ...player, group_name: group }]
+    }));
+  };
+
+  // Move player between groups
+  const moveToGroup = (player: DrawnPlayer, fromGroup: GroupName, toGroup: GroupName) => {
+    if (fromGroup === toGroup) return;
+    setGroups(prev => ({
+      ...prev,
+      [fromGroup]: prev[fromGroup].filter(p => p.id !== player.id),
+      [toGroup]: [...prev[toGroup], { ...player, group_name: toGroup }]
+    }));
+  };
+
+  // Remove player from group back to pool
+  const removeFromGroup = (player: DrawnPlayer, fromGroup: GroupName) => {
+    setGroups(prev => ({
+      ...prev,
+      [fromGroup]: prev[fromGroup].filter(p => p.id !== player.id)
+    }));
+    setUnassigned(prev => [...prev, { ...player, group_name: "A" }]);
+  };
+
+  // Doubles: create pair from unassigned players
+  const createPair = (id1: string, id2: string) => {
+    const p1 = unassigned.find(p => p.id === id1);
+    const p2 = unassigned.find(p => p.id === id2);
+    if (!p1 || !p2 || id1 === id2) return;
+
+    const pair: DrawnPlayer = {
+      id: `${id1}-${id2}`,
+      name: `${p1.name} & ${p2.name}`,
+      wa: `${p1.wa} / ${p2.wa}`,
+      group_name: "A",
+      type: "doubles"
+    };
+
+    setUnassigned(prev => prev.filter(p => p.id !== id1 && p.id !== id2));
+    // Add pair to unassigned pool
+    setUnassigned(prev => [...prev, pair]);
+  };
+
+  // Save to Supabase
   const saveToSupabase = async () => {
     setSaving(true);
     setSaveError(null);
-    setSaveSuccess(false);
 
     try {
-      // 1. Convert drawn players into flat list
-      const playersList: DrawnPlayer[] = [];
-      Object.keys(drawnGroups).forEach((key) => {
-        playersList.push(...drawnGroups[key as GroupName]);
-      });
-
-      if (playersList.length === 0) {
-        throw new Error("Tidak ada data peserta untuk disimpan.");
+      const allGrouped = Object.values(groups).flat();
+      if (allGrouped.length === 0) {
+        throw new Error("Tidak ada peserta yang diassign ke grup.");
       }
 
-      // 2. Prepare players payload
-      const playersToInsert = playersList.map(p => ({
-        id: p.id.includes("-") ? undefined : p.id, // Generate new UUID if it is a paired composite ID
-        name: p.name,
-        wa: p.wa,
-        group_name: p.group_name,
-        type: p.type
-      }));
-
-      // 3. Prepare matches payload
+      // Generate matches (round-robin within each group)
       const matchesToInsert: any[] = [];
-      const groups: GroupName[] = ["A", "B", "C", "D"].slice(0, groupCount) as GroupName[];
-
-      groups.forEach((gName) => {
-        const groupPlayers = drawnGroups[gName];
-        // Generate matches for each pair
+      activeGroups.forEach(gName => {
+        const groupPlayers = groups[gName];
         for (let i = 0; i < groupPlayers.length; i++) {
           for (let j = i + 1; j < groupPlayers.length; j++) {
             matchesToInsert.push({
@@ -248,13 +227,21 @@ export default function LiveDrawingPage() {
         }
       });
 
-      // 4. Send to our API Route
+      const playersToInsert = allGrouped.map(p => ({
+        id: p.id.includes("-") ? undefined : p.id,
+        name: p.name,
+        wa: p.wa,
+        group_name: p.group_name,
+        type: p.type
+      }));
+
       const res = await fetch("/api/drawing/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          players: playersToInsert, 
+        body: JSON.stringify({
+          players: playersToInsert,
           matches: matchesToInsert,
+          type,
           startDate,
           endDate,
           skipWeekends
@@ -267,35 +254,57 @@ export default function LiveDrawingPage() {
       }
 
       setSaveSuccess(true);
-      setShowConfirmSave(false);
+      await loadExisting();
     } catch (err: any) {
-      console.error(err);
       setSaveError(err.message || "Gagal menyimpan hasil drawing ke server.");
     } finally {
       setSaving(false);
     }
   };
 
-  const resetDatabase = async () => {
-    if (!confirm("Apakah Anda yakin ingin RESET turnamen? Ini akan menghapus semua pemain, semua jadwal pertandingan, skor, dan log secara permanen!")) {
-      return;
-    }
+  // Reset only this type
+  const resetType = async () => {
+    if (!confirm(`Hapus semua data ${type}? Data ${type === "singles" ? "doubles" : "singles"} tetap tersimpan.`)) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/drawing/reset", {
-        method: "POST"
+      const res = await fetch("/api/drawing/reset-type", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type })
       });
-
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.error || "Gagal reset database");
+        throw new Error(errData.error || "Gagal reset");
       }
-
-      alert("Database turnamen berhasil di-reset sepenuhnya!");
-      setDrawnGroups({ A: [], B: [], C: [], D: [] });
-      setDrawingState("idle");
+      alert(`Data ${type} berhasil dihapus!`);
+      await loadExisting();
+      setPhase("config");
+      setGroups({ A: [], B: [], C: [], D: [] });
+      setUnassigned([]);
     } catch (err: any) {
-      alert("Gagal reset database: " + err.message);
+      alert("Gagal reset: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Reset everything
+  const resetAll = async () => {
+    if (!confirm("RESET SEMUA DATA? Ini akan menghapus semua pemain, jadwal, skor, dan log secara permanen!")) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/drawing/reset", { method: "POST" });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Gagal reset");
+      }
+      alert("Database berhasil di-reset!");
+      await loadExisting();
+      setPhase("config");
+      setGroups({ A: [], B: [], C: [], D: [] });
+      setUnassigned([]);
+    } catch (err: any) {
+      alert("Gagal reset: " + err.message);
     } finally {
       setSaving(false);
     }
@@ -316,9 +325,9 @@ export default function LiveDrawingPage() {
         <div className="box-neo bg-pink text-white p-8 max-w-md text-center font-mono">
           <h3 className="text-xl font-bold mb-4">Gagal Memuat Halaman</h3>
           <p className="text-sm mb-6">{error}</p>
-          <a href="/" className="btn-neo bg-black text-white hover:bg-yellow hover:text-black py-2 px-4 inline-block">
+          <Link href="/" className="btn-neo bg-black text-white hover:bg-yellow hover:text-black py-2 px-4 inline-block">
             Kembali ke Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -326,318 +335,400 @@ export default function LiveDrawingPage() {
 
   return (
     <div className="bg-navy min-h-screen py-12 px-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-block px-4 py-1.5 border-2 border-black shadow-[3px_3px_0_#000] font-mono text-xs font-bold uppercase tracking-wider bg-pink text-white mb-4">
             Admin Panel
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white">🎲 Live Drawing Turnamen</h1>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white">Live Drawing Turnamen</h1>
           <p className="font-mono text-xs md:text-sm text-white/60 mt-3">
-            Ambil data pendaftar Mapid secara live, acak grup kualifikasi secara otomatis, dan sinkronisasi ke Supabase.
+            Assign pemain ke grup secara manual. Singles dan doubles diundi terpisah.
           </p>
         </div>
 
-        {/* Layout Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Left panel: Config and list */}
-          <div className="lg:col-span-1 space-y-6">
-            
-            {/* Setting Box */}
-            <div className="box-neo bg-white text-black p-6">
-              <h3 className="font-mono text-base font-bold border-b-2 border-black pb-2 mb-4">⚙️ Konfigurasi Drawing</h3>
-              
-              <div className="space-y-4 font-mono text-xs">
-                <div>
-                  <label className="block font-bold mb-1">Kategori Turnamen:</label>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setType("singles")}
-                      className={`flex-1 py-2 font-bold border-2 border-black rounded-none cursor-pointer ${
-                        type === "singles" ? "bg-pink text-white" : "bg-gray-100 text-black"
-                      }`}
-                      disabled={drawingState === "drawing"}
-                    >
-                      👤 Singles
-                    </button>
-                    <button
-                      onClick={() => setType("doubles")}
-                      className={`flex-1 py-2 font-bold border-2 border-black rounded-none cursor-pointer ${
-                        type === "doubles" ? "bg-blue text-white" : "bg-gray-100 text-black"
-                      }`}
-                      disabled={drawingState === "drawing"}
-                    >
-                      👥 Doubles
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-bold mb-1">Jumlah Grup:</label>
-                  <select
-                    value={groupCount}
-                    onChange={(e) => setGroupCount(Number(e.target.value))}
-                    className="w-full p-2 border-2 border-black rounded-none bg-white font-bold cursor-pointer"
-                    disabled={drawingState === "drawing"}
-                  >
-                    <option value={2}>2 Grup (A, B)</option>
-                    <option value={3}>3 Grup (A, B, C)</option>
-                    <option value={4}>4 Grup (A, B, C, D)</option>
-                  </select>
-                </div>
-
-                <div className="border-t-2 border-black/10 pt-3 mt-3 space-y-3">
-                  <h4 className="font-bold uppercase tracking-wider text-[10px] text-pink">📅 Pengaturan Jadwal</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block mb-1 text-[10px]">Tgl Mulai:</label>
-                      <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full p-1.5 border-2 border-black rounded-none bg-white font-mono text-[10px] font-bold"
-                        disabled={drawingState === "drawing"}
-                      />
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-[10px]">Tgl Selesai:</label>
-                      <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full p-1.5 border-2 border-black rounded-none bg-white font-mono text-[10px] font-bold"
-                        disabled={drawingState === "drawing"}
-                      />
-                    </div>
-                  </div>
-                  <label className="flex items-center gap-2 cursor-pointer font-mono text-[10px]">
-                    <input
-                      type="checkbox"
-                      checked={skipWeekends}
-                      onChange={(e) => setSkipWeekends(e.target.checked)}
-                      className="accent-black cursor-pointer"
-                      disabled={drawingState === "drawing"}
-                    />
-                    <span className="font-bold">Lewati Akhir Pekan (Sabtu/Minggu)</span>
-                  </label>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    onClick={startDrawing}
-                    disabled={drawingState === "drawing" || selectedIds.size === 0}
-                    className="w-full btn-neo bg-green text-black hover:bg-yellow hover:text-black py-3 font-bold text-sm tracking-wider cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    🚀 MULAI DRAWING LIVE
-                  </button>
-                </div>
-
-                <div>
-                  <button
-                    onClick={resetDatabase}
-                    disabled={saving || drawingState === "drawing"}
-                    className="w-full btn-neo bg-pink text-white hover:bg-red-600 py-2.5 font-bold text-xs tracking-wider cursor-pointer"
-                  >
-                    ⚠️ RESET TOURNAMENT DATA
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Registrants Checkbox list */}
-            <div className="box-neo bg-white text-black p-6 max-h-[500px] overflow-y-auto">
-              <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-4">
-                <h3 className="font-mono text-base font-bold">📋 Pendaftar API ({registrants.length})</h3>
-                <div className="flex gap-2 text-[10px] font-mono font-bold">
-                  <button onClick={selectAll} className="underline text-blue hover:text-navy cursor-pointer">Semua</button>
-                  <button onClick={selectNone} className="underline text-pink hover:text-navy cursor-pointer">Kosongkan</button>
-                </div>
-              </div>
-
-              <div className="space-y-2 font-mono text-xs">
-                {registrants.map((p) => {
-                  const isChecked = selectedIds.has(p.id);
-                  return (
-                    <label
-                      key={p.id}
-                      className={`flex items-center gap-3 p-2 border-2 border-black/10 hover:border-black cursor-pointer transition-colors ${
-                        isChecked ? "bg-yellow/10 border-black" : "bg-transparent"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => toggleSelect(p.id)}
-                        disabled={drawingState === "drawing"}
-                        className="cursor-pointer accent-black w-4 h-4"
-                      />
-                      <div className="truncate">
-                        <div className="font-bold">{p.name}</div>
-                        <div className="text-[10px] text-black/50">{p.wa}</div>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-          </div>
-
-          {/* Right panel: Active drawing and groups */}
-          <div className="lg:col-span-2 space-y-6">
-
-            {/* Active drawing board */}
-            {drawingState === "drawing" && (
-              <div className="box-neo bg-yellow text-black p-8 text-center animate-pulse border-4">
-                <span className="font-mono text-xs font-bold bg-black text-white px-3 py-1 uppercase tracking-widest">
-                  Mengundi Live...
+        {/* Existing Status Bar */}
+        <div className="box-neo bg-white text-black p-4 mb-8 font-mono text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <div>
+                <span className="font-bold">Singles:</span>{" "}
+                <span className={existingSingles.length > 0 ? "text-green font-bold" : "text-black/40"}>
+                  {existingSingles.length > 0 ? `${existingSingles.length} pemain` : "Belum diundi"}
                 </span>
-                
-                <div className="my-8 min-h-[70px] flex items-center justify-center">
-                  <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight uppercase font-mono">
-                    {isRolling ? (
-                      <span className="text-black/40">{currentDrawingItem}</span>
-                    ) : (
-                      <span className="text-black scale-110 transition-transform duration-200">{currentDrawingItem}</span>
-                    )}
-                  </h2>
-                </div>
-
-                <div className="w-full bg-black/10 h-4 border-2 border-black rounded-none overflow-hidden">
-                  <div
-                    className="bg-black h-full transition-all duration-300"
-                    style={{ width: `${drawProgress}%` }}
-                  />
-                </div>
-                <div className="font-mono text-xs mt-2 font-bold">{drawProgress}% Selesai</div>
               </div>
-            )}
-
-            {/* Success screen */}
-            {drawingState === "completed" && !saveSuccess && (
-              <div className="box-neo bg-green text-black p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold font-mono">✅ Drawing Selesai!</h3>
-                  <p className="text-xs font-mono mt-1">Grup kualifikasi telah diacak. Silakan simpan hasil ini ke database Supabase.</p>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowConfirmSave(true)}
-                    className="btn-neo bg-black text-white hover:bg-yellow hover:text-black py-2.5 px-5 font-mono text-xs font-bold cursor-pointer"
-                  >
-                    💾 Simpan ke Supabase ➔
-                  </button>
-                  <button
-                    onClick={startDrawing}
-                    className="btn-neo bg-white text-black hover:bg-gray-100 py-2.5 px-4 font-mono text-xs font-bold cursor-pointer"
-                  >
-                    🔄 Acak Ulang
-                  </button>
-                </div>
+              <div>
+                <span className="font-bold">Doubles:</span>{" "}
+                <span className={existingDoubles.length > 0 ? "text-green font-bold" : "text-black/40"}>
+                  {existingDoubles.length > 0 ? `${existingDoubles.length} pasangan` : "Belum diundi"}
+                </span>
               </div>
-            )}
+            </div>
+            <button
+              onClick={resetAll}
+              disabled={saving}
+              className="btn-neo bg-pink text-white py-1.5 px-3 font-bold text-[10px] cursor-pointer"
+            >
+              ⚠️ RESET SEMUA
+            </button>
+          </div>
+        </div>
 
-            {/* Save Confirmation Modal Overlay */}
-            {showConfirmSave && (
-              <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-6 backdrop-blur-xs">
-                <div className="box-neo bg-white text-black p-8 max-w-md w-full font-mono">
-                  <h3 className="text-xl font-bold mb-4 text-pink">🚨 PERINGATAN CRITICAL</h3>
-                  <p className="text-xs md:text-sm mb-6 leading-relaxed">
-                    Menyimpan drawing baru akan <strong>MENGHAPUS SEMUA</strong> data pemain lama, jadwal kualifikasi, skor pertandingan, dan log yang ada saat ini.
-                    <br /><br />
-                    Sistem juga akan otomatis menghasilkan jadwal pertandingan <strong>Round Robin</strong> baru untuk grup-grup di bawah ini.
-                  </p>
-                  
-                  {saveError && (
-                    <div className="p-3 bg-red-100 text-red-700 text-xs font-bold mb-4 border border-red-300">
-                      ❌ Gagal: {saveError}
+        {/* ==================== CONFIG PHASE ==================== */}
+        {phase === "config" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Config Panel */}
+            <div className="lg:col-span-1">
+              <div className="box-neo bg-white text-black p-6">
+                <h3 className="font-mono text-base font-bold border-b-2 border-black pb-2 mb-4">⚙️ Konfigurasi Drawing</h3>
+                <div className="space-y-4 font-mono text-xs">
+                  <div>
+                    <label className="block font-bold mb-1">Kategori Turnamen:</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setType("singles")}
+                        className={`flex-1 py-2 font-bold border-2 border-black cursor-pointer ${type === "singles" ? "bg-pink text-white" : "bg-gray-100 text-black"}`}
+                      >
+                        👤 Singles
+                      </button>
+                      <button
+                        onClick={() => setType("doubles")}
+                        className={`flex-1 py-2 font-bold border-2 border-black cursor-pointer ${type === "doubles" ? "bg-blue text-white" : "bg-gray-100 text-black"}`}
+                      >
+                        👥 Doubles
+                      </button>
                     </div>
-                  )}
-
-                  <div className="flex gap-3 justify-end">
-                    <button
-                      onClick={() => setShowConfirmSave(false)}
-                      disabled={saving}
-                      className="border-2 border-black py-2 px-4 font-bold text-xs cursor-pointer hover:bg-gray-100"
-                    >
-                      Batal
-                    </button>
-                    <button
-                      onClick={saveToSupabase}
-                      disabled={saving}
-                      className="bg-green text-black border-2 border-black py-2 px-4 font-bold text-xs cursor-pointer shadow-[3px_3px_0_#000] active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50"
-                    >
-                      {saving ? "Menyimpan..." : "Ya, Reset & Simpan!"}
-                    </button>
                   </div>
+
+                  <div>
+                    <label className="block font-bold mb-1">Jumlah Grup:</label>
+                    <select
+                      value={groupCount}
+                      onChange={(e) => setGroupCount(Number(e.target.value))}
+                      className="w-full p-2 border-2 border-black bg-white font-bold cursor-pointer"
+                    >
+                      <option value={2}>2 Grup (A, B)</option>
+                      <option value={3}>3 Grup (A, B, C)</option>
+                      <option value={4}>4 Grup (A, B, C, D)</option>
+                    </select>
+                  </div>
+
+                  <div className="border-t-2 border-black/10 pt-3 space-y-3">
+                    <h4 className="font-bold uppercase tracking-wider text-[10px] text-pink">📅 Pengaturan Jadwal</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block mb-1 text-[10px]">Tgl Mulai:</label>
+                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full p-1.5 border-2 border-black bg-white font-mono text-[10px] font-bold" />
+                      </div>
+                      <div>
+                        <label className="block mb-1 text-[10px]">Tgl Selesai:</label>
+                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full p-1.5 border-2 border-black bg-white font-mono text-[10px] font-bold" />
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer font-mono text-[10px]">
+                      <input type="checkbox" checked={skipWeekends} onChange={(e) => setSkipWeekends(e.target.checked)}
+                        className="accent-black cursor-pointer" />
+                      <span className="font-bold">Lewati Akhir Pekan</span>
+                    </label>
+                  </div>
+
+                  <button onClick={startAssign}
+                    className="w-full btn-neo bg-green text-black hover:bg-yellow hover:text-black py-3 font-bold text-sm tracking-wider cursor-pointer">
+                    ✋ MULAI ASSIGN MANUAL
+                  </button>
+
+                  <button onClick={resetType} disabled={saving}
+                    className="w-full btn-neo bg-pink text-white py-2.5 font-bold text-xs tracking-wider cursor-pointer">
+                    ⚠️ Hapus Data {type === "singles" ? "Singles" : "Doubles"}
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Save success screen */}
-            {saveSuccess && (
-              <div className="box-neo bg-yellow text-black p-6 border-black">
-                <h3 className="text-xl font-bold font-mono">🎉 Hasil Drawing Berhasil Disimpan!</h3>
-                <p className="text-xs font-mono mt-1 mb-4">
-                  Data peserta baru dan jadwal kualifikasi Round Robin telah disinkronisasikan ke Supabase secara live.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <a
-                    href="/peserta"
-                    className="btn-neo bg-black text-white hover:bg-white hover:text-black py-2 px-4 font-mono text-xs font-bold"
-                  >
-                    👥 Lihat Peserta
-                  </a>
-                  <a
-                    href="/livescore"
-                    className="btn-neo bg-green text-black hover:bg-white py-2 px-4 font-mono text-xs font-bold"
-                  >
-                    🗓️ Mulai Pertandingan (Live Score)
-                  </a>
-                  <a
-                    href="/standings"
-                    className="btn-neo bg-blue text-white hover:bg-white hover:text-black py-2 px-4 font-mono text-xs font-bold"
-                  >
-                    📈 Lihat Klasemen
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {/* Groups Grid Display */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {(["A", "B", "C", "D"].slice(0, groupCount) as GroupName[]).map((gName) => (
-                <div key={gName} className="box-neo bg-white text-black overflow-hidden">
-                  <div className="bg-black text-white p-3 font-mono font-bold text-xs uppercase tracking-wider">
-                    Grup {gName} ({drawnGroups[gName].length} Peserta)
+            {/* Existing data preview */}
+            <div className="lg:col-span-2">
+              <div className="box-neo bg-white text-black p-6">
+                <h3 className="font-mono text-base font-bold border-b-2 border-black pb-2 mb-4">
+                  📊 Data {type === "singles" ? "Singles" : "Doubles"} Saat Ini
+                </h3>
+                {getExistingForType().length === 0 ? (
+                  <div className="text-center py-12 text-black/30 font-mono text-sm">
+                    Belum ada data {type}. Klik &quot;Mulai Assign Manual&quot; untuk memulai.
                   </div>
-                  <div className="p-4 space-y-2 font-mono text-xs min-h-[150px]">
-                    {drawnGroups[gName].length === 0 ? (
-                      <div className="text-black/30 text-center py-10 italic">Belum diundi</div>
-                    ) : (
-                      drawnGroups[gName].map((player, idx) => (
-                        <div
-                          key={player.id}
-                          className="flex justify-between items-center border-b border-black/10 py-1.5"
-                        >
-                          <div className="font-bold flex items-center gap-2">
-                            <span className="text-black/40">{idx + 1}.</span>
-                            <span>{player.name}</span>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {activeGroups.map(gName => {
+                      const groupPlayers = getExistingForType().filter(p => p.group_name === gName);
+                      return (
+                        <div key={gName} className="border-2 border-black/10 p-3">
+                          <div className="font-bold text-xs mb-2 uppercase">Grup {gName} ({groupPlayers.length})</div>
+                          <div className="space-y-1">
+                            {groupPlayers.map(p => (
+                              <div key={p.id} className="text-[10px] truncate">{p.name}</div>
+                            ))}
+                            {groupPlayers.length === 0 && (
+                              <div className="text-[10px] text-black/30 italic">Kosong</div>
+                            )}
                           </div>
-                          <span className="text-[10px] text-black/50 bg-black/5 px-2 py-0.5 uppercase">
-                            {player.type}
-                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== ASSIGN PHASE ==================== */}
+        {phase === "assign" && (
+          <div className="space-y-6">
+            {/* Back + Save Bar */}
+            <div className="box-neo bg-white text-black p-4 font-mono text-xs flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <button onClick={() => setPhase("config")}
+                  className="btn-neo bg-gray-100 text-black py-2 px-4 font-bold cursor-pointer">
+                  ← Kembali
+                </button>
+                <div className="font-bold">
+                  Mode: <span className={type === "singles" ? "text-pink" : "text-blue"}>
+                    {type === "singles" ? "👤 Singles" : "👥 Doubles"}
+                  </span>
+                </div>
+                <div>
+                  Diassign: {Object.values(groups).flat().length} | Belum: {unassigned.length}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={saveToSupabase} disabled={saving || Object.values(groups).flat().length === 0}
+                  className="btn-neo bg-green text-black hover:bg-yellow py-2.5 px-5 font-bold cursor-pointer disabled:opacity-50">
+                  {saving ? "Menyimpan..." : "💾 Simpan ke Supabase"}
+                </button>
+              </div>
+            </div>
+
+            {saveSuccess && (
+              <div className="box-neo bg-green text-black p-4 font-mono text-xs font-bold">
+                ✅ Berhasil disimpan! <a href="/livescore" className="underline ml-2">Lihat Live Score →</a>
+              </div>
+            )}
+            {saveError && (
+              <div className="box-neo bg-pink text-white p-4 font-mono text-xs font-bold">
+                ❌ {saveError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left: Player Pool */}
+              <div className="lg:col-span-3 space-y-4">
+                <div className="box-neo bg-white text-black p-4">
+                  <h3 className="font-mono text-sm font-bold border-b-2 border-black pb-2 mb-3">📋 Pendaftar</h3>
+                  <div className="flex gap-2 mb-3">
+                    <button onClick={() => addToPool(registrants)}
+                      className="flex-1 bg-green text-black border-2 border-black py-1.5 text-[10px] font-bold cursor-pointer hover:bg-yellow">
+                      + Tambah Semua
+                    </button>
+                  </div>
+                  <div className="max-h-[400px] overflow-y-auto space-y-1">
+                    {registrants.length === 0 ? (
+                      <div className="text-xs text-black/30 py-4 text-center">Tidak ada pendaftar</div>
+                    ) : (
+                      registrants.map(p => {
+                        const isAssigned = unassigned.some(u => u.id === p.id) ||
+                          Object.values(groups).flat().some(g => g.name === p.name);
+                        return (
+                          <div key={p.id}
+                            className={`flex items-center justify-between p-2 text-[10px] border border-black/10 ${
+                              isAssigned ? "bg-green/10 opacity-50" : "hover:bg-yellow/10"
+                            }`}>
+                            <span className="font-bold truncate">{p.name}</span>
+                            {!isAssigned && (
+                              <button onClick={() => addToPool([p])}
+                                className="bg-black text-white px-2 py-0.5 text-[9px] font-bold cursor-pointer hover:bg-green">
+                                +Ambil
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Unassigned Pool */}
+                <div className="box-neo bg-yellow text-black p-4">
+                  <h3 className="font-mono text-sm font-bold border-b-2 border-black pb-2 mb-3">
+                    🎯 Belum Diassign ({unassigned.length})
+                  </h3>
+                  <div className="max-h-[300px] overflow-y-auto space-y-1">
+                    {unassigned.length === 0 ? (
+                      <div className="text-xs text-black/30 py-4 text-center">Klik &quot;+Ambil&quot; dari pendaftar</div>
+                    ) : (
+                      unassigned.map(p => (
+                        <div key={p.id}
+                          className="flex items-center justify-between p-2 bg-white border-2 border-black text-[10px]">
+                          <span className="font-bold truncate">{p.name}</span>
+                          <button onClick={() => removeFromPool(p.id)}
+                            className="text-pink font-bold cursor-pointer text-[9px]">✕</button>
                         </div>
                       ))
                     )}
                   </div>
                 </div>
-              ))}
+
+                {/* Doubles Pairing (only visible in doubles mode) */}
+                {type === "doubles" && unassigned.length >= 2 && (
+                  <div className="box-neo bg-blue text-white p-4">
+                    <h3 className="font-mono text-sm font-bold border-b-2 border-white/20 pb-2 mb-3">
+                      👥 Buat Pasangan
+                    </h3>
+                    <DoublesPairing
+                      unassigned={unassigned}
+                      onCreatePair={createPair}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Group Buckets */}
+              <div className="lg:col-span-9">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {activeGroups.map(gName => (
+                    <GroupBucket
+                      key={gName}
+                      group={groups[gName]}
+                      groupName={gName}
+                      activeGroups={activeGroups}
+                      type={type}
+                      onAssign={assignToGroup}
+                      onMove={moveToGroup}
+                      onRemove={removeFromGroup}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
-
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-        </div>
+// ==================== SUB COMPONENTS ====================
+
+function DoublesPairing({
+  unassigned,
+  onCreatePair
+}: {
+  unassigned: DrawnPlayer[];
+  onCreatePair: (id1: string, id2: string) => void;
+}) {
+  const [sel1, setSel1] = useState<string>("");
+  const [sel2, setSel2] = useState<string>("");
+
+  const handleCreate = () => {
+    if (sel1 && sel2 && sel1 !== sel2) {
+      onCreatePair(sel1, sel2);
+      setSel1("");
+      setSel2("");
+    }
+  };
+
+  return (
+    <div className="space-y-2 font-mono text-[10px]">
+      <select value={sel1} onChange={e => setSel1(e.target.value)}
+        className="w-full p-1.5 border-2 border-black bg-white text-black font-bold">
+        <option value="">-- Pilih Pemain 1 --</option>
+        {unassigned.filter(p => !p.id.includes("-")).map(p => (
+          <option key={p.id} value={p.id}>{p.name}</option>
+        ))}
+      </select>
+      <div className="text-center text-white/50 font-bold">&amp;</div>
+      <select value={sel2} onChange={e => setSel2(e.target.value)}
+        className="w-full p-1.5 border-2 border-black bg-white text-black font-bold">
+        <option value="">-- Pilih Pemain 2 --</option>
+        {unassigned.filter(p => !p.id.includes("-") && p.id !== sel1).map(p => (
+          <option key={p.id} value={p.id}>{p.name}</option>
+        ))}
+      </select>
+      <button onClick={handleCreate} disabled={!sel1 || !sel2 || sel1 === sel2}
+        className="w-full bg-black text-white py-2 font-bold cursor-pointer hover:bg-yellow hover:text-black disabled:opacity-50">
+        + Buat Pasangan
+      </button>
+    </div>
+  );
+}
+
+function GroupBucket({
+  group,
+  groupName,
+  activeGroups,
+  type,
+  onAssign,
+  onMove,
+  onRemove
+}: {
+  group: DrawnPlayer[];
+  groupName: GroupName;
+  activeGroups: GroupName[];
+  type: "singles" | "doubles";
+  onAssign: (player: DrawnPlayer, group: GroupName) => void;
+  onMove: (player: DrawnPlayer, from: GroupName, to: GroupName) => void;
+  onRemove: (player: DrawnPlayer, from: GroupName) => void;
+}) {
+  const [showMoveMenu, setShowMoveMenu] = useState<string | null>(null);
+
+  return (
+    <div className="box-neo bg-white text-black overflow-hidden">
+      <div className="bg-black text-white p-3 font-mono font-bold text-xs uppercase tracking-wider flex justify-between items-center">
+        <span>Grup {groupName}</span>
+        <span className="text-[10px] bg-yellow text-black px-2 py-0.5">{group.length}</span>
+      </div>
+      <div className="p-3 space-y-2 min-h-[200px] font-mono text-xs">
+        {group.length === 0 ? (
+          <div className="text-black/20 text-center py-10 italic text-[10px]">
+            Klik pemain dari pool untuk assign ke sini
+          </div>
+        ) : (
+          group.map((player, idx) => (
+            <div key={player.id} className="relative">
+              <div className="flex items-center justify-between border-b border-black/10 py-1.5">
+                <div className="font-bold flex items-center gap-1">
+                  <span className="text-black/40">{idx + 1}.</span>
+                  <span className="truncate">{player.name}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {activeGroups.length > 1 && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowMoveMenu(showMoveMenu === player.id ? null : player.id)}
+                        className="text-[9px] bg-blue text-white px-1.5 py-0.5 font-bold cursor-pointer"
+                      >
+                        ↕
+                      </button>
+                      {showMoveMenu === player.id && (
+                        <div className="absolute right-0 top-6 z-10 bg-white border-2 border-black shadow-md p-1 min-w-[80px]">
+                          {activeGroups.filter(g => g !== groupName).map(g => (
+                            <button key={g}
+                              onClick={() => { onMove(player, groupName, g); setShowMoveMenu(null); }}
+                              className="block w-full text-left px-2 py-1 text-[9px] hover:bg-yellow font-bold cursor-pointer">
+                              → Grup {g}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <button onClick={() => onRemove(player, groupName)}
+                    className="text-pink font-bold cursor-pointer text-[9px] px-1">✕</button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

@@ -26,20 +26,41 @@ function getDatesInRange(startDateStr: string, endDateStr: string, skipWeekends:
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { players, matches, startDate = "2026-07-06", endDate = "2026-07-17", skipWeekends = true } = body;
+    const { players, matches, type, startDate = "2026-07-06", endDate = "2026-07-17", skipWeekends = true } = body;
 
     if (!players || players.length === 0) {
       return NextResponse.json({ error: "Data pemain kosong" }, { status: 400 });
     }
 
-    // 1. Reset Database using our new dedicated RPC
-    const { error: resetError } = await supabase.rpc("reset_tournament");
-    if (resetError) {
-      console.error("Reset Error:", resetError);
-      return NextResponse.json({ error: "Gagal me-reset database." }, { status: 500 });
+    if (type !== "singles" && type !== "doubles") {
+      return NextResponse.json({ error: "Type harus 'singles' atau 'doubles'" }, { status: 400 });
     }
 
-    // 2. Insert Players
+    // 1. Delete only matches of this type (not full reset)
+    const { error: deleteMatchError } = await supabase
+      .from("mapidpong_matches")
+      .delete()
+      .eq("match_type", type)
+      .not("id", "is", null);
+
+    if (deleteMatchError) {
+      console.error("Delete Matches Error:", deleteMatchError);
+      return NextResponse.json({ error: "Gagal menghapus pertandingan lama." }, { status: 500 });
+    }
+
+    // 2. Delete only players of this type (not full reset)
+    const { error: deletePlayerError } = await supabase
+      .from("mapidpong_players")
+      .delete()
+      .eq("type", type)
+      .not("id", "is", null);
+
+    if (deletePlayerError) {
+      console.error("Delete Players Error:", deletePlayerError);
+      return NextResponse.json({ error: "Gagal menghapus pemain lama." }, { status: 500 });
+    }
+
+    // 3. Insert Players
     const { error: insertPlayersError } = await supabase
       .from("mapidpong_players")
       .insert(players);
@@ -48,7 +69,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Gagal menyimpan pemain baru." }, { status: 500 });
     }
 
-    // 3. Insert Matches
+    // 4. Insert Matches
     if (matches && matches.length > 0) {
       // Shuffle the matches array to interleave groups
       for (let i = matches.length - 1; i > 0; i--) {

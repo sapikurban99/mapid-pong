@@ -6,17 +6,21 @@ import Marquee from "@/components/Marquee";
 import Link from "next/link";
 
 export default async function HomeDashboard() {
-  // Fetch stats on the server — no loading spinner needed
   let playersCount = 0;
+  let singlesCount = 0;
+  let doublesCount = 0;
   let liveMatchesCount = 0;
 
   try {
     const [playersRes, matchesRes] = await Promise.all([
-      supabase.from("mapidpong_players").select("id", { count: "exact", head: true }),
+      supabase.from("mapidpong_players").select("id, type"),
       api.getMatches()
     ]);
 
-    playersCount = playersRes.count || 0;
+    const players = playersRes.data || [];
+    playersCount = players.length;
+    singlesCount = players.filter((p: any) => p.type === "singles").length;
+    doublesCount = players.filter((p: any) => p.type === "doubles").length;
     liveMatchesCount = matchesRes.filter(m => m.status === "live").length;
   } catch (err) {
     console.error("Error loading dashboard stats:", err);
@@ -67,16 +71,21 @@ export default async function HomeDashboard() {
     },
     {
       title: "🎲 Live Drawing",
-      description: "Halaman khusus admin untuk mengundi grup pendaftar Mapid secara live.",
+      description: "Halaman khusus admin untuk assign grup pendaftar Mapid secara manual.",
       href: "/drawing",
       bgClass: "bg-pink text-white border-black",
-      btnText: "Mulai Undian"
+      btnText: "Mulai Drawing"
     }
   ];
 
   return (
     <>
-      <Hero participantCount={playersCount} liveMatchCount={liveMatchesCount} />
+      <Hero
+        participantCount={playersCount}
+        singlesCount={singlesCount}
+        doublesCount={doublesCount}
+        liveMatchCount={liveMatchesCount}
+      />
       <Marquee />
 
       {/* Central Navigation Dashboard */}

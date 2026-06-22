@@ -21,8 +21,11 @@ interface LiveScoreProps {
   matches: Match[];
 }
 
+type TypeFilter = "all" | "singles" | "doubles";
+
 export default function LiveScore({ matches }: LiveScoreProps) {
-  const [filter, setFilter] = useState<"all" | "live" | "upcoming" | "finished">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "live" | "upcoming" | "finished">("all");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState<boolean>(false);
   const [refereeMode, setRefereeMode] = useState<boolean>(false);
@@ -30,12 +33,16 @@ export default function LiveScore({ matches }: LiveScoreProps) {
   const [activeEditId, setActiveEditId] = useState<string | null>(null);
 
   const filteredMatches = matches.filter((m) => {
-    const statusOk = filter === "all" || m.status === filter;
+    const statusOk = statusFilter === "all" || m.status === statusFilter;
     const dateOk = !selectedDate || m.scheduled_date === selectedDate;
-    return statusOk && dateOk;
+    const typeOk = typeFilter === "all" || m.match_type === typeFilter;
+    return statusOk && dateOk && typeOk;
   });
   const liveCount = matches.filter(m => m.status === "live").length;
   const selectedDateLabel = formatDateIndonesian(selectedDate);
+
+  const singlesMatches = matches.filter(m => m.match_type === "singles");
+  const doublesMatches = matches.filter(m => m.match_type === "doubles");
 
   const handleAddPoint = async (match: Match, playerNum: 1 | 2) => {
     if (!refereeName.trim()) return alert("Masukkan nama wasit terlebih dahulu!");
@@ -70,13 +77,34 @@ export default function LiveScore({ matches }: LiveScoreProps) {
           </div>
         </div>
 
-        {/* Filter Toolbar Nav */}
+        {/* Type Filter */}
+        <div className="flex justify-center gap-2 mb-4">
+          {([
+            { key: "all" as TypeFilter, label: "Semua", count: matches.length },
+            { key: "singles" as TypeFilter, label: "👤 Singles", count: singlesMatches.length },
+            { key: "doubles" as TypeFilter, label: "👥 Doubles", count: doublesMatches.length },
+          ]).map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTypeFilter(t.key)}
+              className={`font-mono text-[10px] font-bold uppercase px-4 py-2 border-2 border-black cursor-pointer transition-all ${
+                typeFilter === t.key
+                  ? t.key === "singles" ? "bg-pink text-white" : t.key === "doubles" ? "bg-blue text-white" : "bg-yellow text-black"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              {t.label} ({t.count})
+            </button>
+          ))}
+        </div>
+
+        {/* Status Filter Toolbar */}
         <div className="flex flex-wrap justify-center gap-3 mb-6">
           {(["all", "live", "upcoming", "finished"] as const).map((t) => (
             <button
               key={t}
-              onClick={() => setFilter(t)}
-              className={`font-mono text-xs font-bold uppercase px-5 py-2.5 border-3 border-black shadow-[3px_3px_0_#000] cursor-pointer transition-all ${filter === t ? "bg-yellow text-black" : "bg-white/10 text-white hover:bg-white/20"
+              onClick={() => setStatusFilter(t)}
+              className={`font-mono text-xs font-bold uppercase px-5 py-2.5 border-3 border-black shadow-[3px_3px_0_#000] cursor-pointer transition-all ${statusFilter === t ? "bg-yellow text-black" : "bg-white/10 text-white hover:bg-white/20"
                 }`}
             >
               {t}
@@ -154,7 +182,7 @@ export default function LiveScore({ matches }: LiveScoreProps) {
               <div key={match.id} className={`box-neo p-6 transition-all ${match.status === "live" ? "bg-pink/10 border-pink" : "bg-white/5 border-black"}`}>
                 <div className="flex justify-between items-center mb-4">
                   <span className="font-mono text-[10px] font-bold text-white/50 tracking-wider uppercase">
-                    MATCH #{match.match_order || '?'} • {match.round} {match.group_name && `/ ${match.group_name}`}
+                    {match.match_type === "doubles" ? "👥" : "👤"} #{match.match_order || '?'} • {match.round} {match.group_name && `/ ${match.group_name}`}
                   </span>
                   <span className={`font-mono text-[10px] font-bold px-3 py-1 border-2 border-black uppercase ${match.status === "live" ? "bg-pink text-white" : match.status === "finished" ? "bg-green text-black" : "bg-white/20 text-white"
                     }`}>
