@@ -211,17 +211,7 @@ export default function LiveDrawingPage() {
         throw new Error("Tidak ada data peserta untuk disimpan.");
       }
 
-      // 2. We use RPC to clear matches, logs, and players cleanly using CTE to bypass exec_sql limitations
-      const resetSql = `
-        WITH deleted_logs AS (DELETE FROM mapidpong_score_logs RETURNING *),
-             deleted_matches AS (DELETE FROM mapidpong_matches RETURNING *),
-             deleted_players AS (DELETE FROM mapidpong_players RETURNING *)
-        SELECT 1 AS success
-      `;
-      const { error: resetError } = await supabase.rpc('exec_sql', { query_text: resetSql });
-      if (resetError) throw resetError;
-
-      // 3. Save new players to mapidpong_players
+      // 2. Prepare players payload
       const playersToInsert = playersList.map(p => ({
         id: p.id.includes("-") ? undefined : p.id, // Generate new UUID if it is a paired composite ID
         name: p.name,
@@ -230,13 +220,7 @@ export default function LiveDrawingPage() {
         type: p.type
       }));
 
-      const { error: insertPlayersError } = await supabase
-        .from("mapidpong_players")
-        .insert(playersToInsert);
-      
-      if (insertPlayersError) throw insertPlayersError;
-
-      // 4. Generate Round Robin matches for each group
+      // 3. Prepare matches payload
       const matchesToInsert: any[] = [];
       const groups: GroupName[] = ["A", "B", "C", "D"].slice(0, groupCount) as GroupName[];
 
@@ -259,19 +243,23 @@ export default function LiveDrawingPage() {
         }
       });
 
-      if (matchesToInsert.length > 0) {
-        const { error: insertMatchesError } = await supabase
-          .from("mapidpong_matches")
-          .insert(matchesToInsert);
-        
-        if (insertMatchesError) throw insertMatchesError;
+      // 4. Send to our API Route
+      const res = await fetch("/api/drawing/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ players: playersToInsert, matches: matchesToInsert })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Gagal menyimpan hasil drawing");
       }
 
       setSaveSuccess(true);
       setShowConfirmSave(false);
     } catch (err: any) {
       console.error(err);
-      setSaveError(err.message || "Gagal menyimpan hasil drawing ke database.");
+      setSaveError(err.message || "Gagal menyimpan hasil drawing ke server.");
     } finally {
       setSaving(false);
     }
@@ -283,14 +271,15 @@ export default function LiveDrawingPage() {
     }
     setSaving(true);
     try {
-      const resetSql = `
-        WITH deleted_logs AS (DELETE FROM mapidpong_score_logs RETURNING *),
-             deleted_matches AS (DELETE FROM mapidpong_matches RETURNING *),
-             deleted_players AS (DELETE FROM mapidpong_players RETURNING *)
-        SELECT 1 AS success
-      `;
-      const { error } = await supabase.rpc('exec_sql', { query_text: resetSql });
-      if (error) throw error;
+      const res = await fetch("/api/drawing/reset", {
+        method: "POST"
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Gagal reset database");
+      }
+
       alert("Database turnamen berhasil di-reset sepenuhnya!");
       setDrawnGroups({ A: [], B: [], C: [], D: [] });
       setDrawingState("idle");
