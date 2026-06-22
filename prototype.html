@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAPID PONG - Ping Pong Tournament 2026</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy: #0d1b2a;
+      --dark-blue: #1b2838;
+      --blue: #0077ff;
+      --green: #00c853;
+      --pink: #ff2d6f;
+      --yellow: #ffd600;
+      --border: 3px solid #000;
+      --shadow: 6px 6px 0px #000;
+      --shadow-sm: 4px 4px 0px #000;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 64px;
+    }
+
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--navy);
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    .mono { font-family: 'Space Mono', monospace; }
+
+    /* ============ NAVBAR ============ */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 50;
+      background: var(--navy);
+      border-bottom: var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .nav-brand .icon {
+      width: 36px; height: 36px;
+      background: var(--yellow);
+      border: 2px solid #000;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+    }
+
+    .nav-links a {
+      color: #fff;
+      text-decoration: none;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 8px 16px;
+      border: 2px solid transparent;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+
+    .nav-links a:hover,
+    .nav-links a.active {
+      border-color: var(--yellow);
+      background: var(--yellow);
+      color: #000;
+    }
+
+    /* ============ HERO ============ */
+    .hero {
+      min-height: calc(100vh - 64px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background:
+        radial-gradient(ellipse at center, rgba(0,119,255,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 30% 50%, rgba(255,45,111,0.1) 0%, transparent 50%);
+      animation: heroGlow 8s ease-in-out infinite alternate;
+      z-index: -1;
+    }
+
+    @keyframes heroGlow {
+      0% { transform: translate(0, 0) scale(1); }
+      100% { transform: translate(5%, 3%) scale(1.05); }
+    }
+
+    .hero-badge {
+      display: inline-block;
+      background: var(--yellow);
+      color: #000;
+      border: 3px solid #000;
+      box-shadow: var(--shadow-sm);
+      padding: 8px 20px;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 {
+      font-size: clamp(48px, 8vw, 96px);
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -2px;
+      margin-bottom: 8px;
+    }
+
+    .hero h1 .text-blue { color: var(--blue); }
+    .hero h1 .text-pink { color: var(--pink); }
+    .hero h1 .text-yellow { color: var(--yellow); }
+    .hero h1 .text-green { color: var(--green); }
+
+    .hero p {
+      font-size: clamp(16px, 2.5vw, 24px);
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 40px;
+      font-weight: 500;
+    }
+
+    .hero-stats {
+      display: flex;
+      gap: 40px;
+      margin-top: 56px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .hero-stat {
+      text-align: center;
+    }
+
+    .hero-stat .num {
+      font-size: 40px;
+      font-weight: 700;
+      font-family: 'Space Mono', monospace;
+    }
+
+    .hero-stat .label {
+      font-size: 11px;
+      font-family: 'Space Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* ============ BUTTONS ============ */
+    .neo-btn {
+      border: 3px solid #000;
+      box-shadow: var(--shadow-sm);
+      padding: 12px 24px;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: 14px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.1s;
+      letter-spacing: 1px;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .neo-btn:hover {
+      transform: translate(2px, 2px);
+      box-shadow: 2px 2px 0px #000;
+    }
+
+    .neo-btn:active {
+      transform: translate(4px, 4px);
+      box-shadow: 0 0 0 #000;
+    }
+
+    /* ============ SECTIONS ============ */
+    section {
+      padding: 80px 24px;
+    }
+
+    .section-dark { background: var(--dark-blue); }
+    .section-darker { background: var(--navy); }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .section-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      border: 2px solid #000;
+      box-shadow: 3px 3px 0 #000;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+
+    .section-header h2 {
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 700;
+      letter-spacing: -1px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* ============ INFO CARDS ============ */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    .info-card {
+      border: 3px solid #000;
+      box-shadow: var(--shadow);
+      background: #fff;
+      color: #000;
+      padding: 32px;
+    }
+
+    .info-card .icon-box {
+      width: 56px; height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      border: 3px solid #000;
+      margin-bottom: 20px;
+    }
+
+    .info-card h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .info-card ul {
+      list-style: none;
+      margin-top: 12px;
+    }
+
+    .info-card li {
+      margin-bottom: 4px;
+    }
+
+    /* ============ FORMAT BOXES ============ */
+    .format-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      margin-top: 32px;
+    }
+
+    .format-box {
+      border: 3px solid #000;
+      box-shadow: var(--shadow-sm);
+      padding: 28px;
+      background: rgba(255,255,255,0.05);
+      border-left: 4px solid;
+    }
+
+    .format-box.border-blue { border-left-color: var(--blue); }
+    .format-box.border-green { border-left-color: var(--green); }
+    .format-box.border-pink { border-left-color: var(--pink); }
+    .format-box.border-yellow { border-left-color: var(--yellow); }
+
+    .format-box h4 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .format-box ul { list-style: none; }
+
+    /* ============ LIVE SCORE ============ */
+    .live-badge {
+      background: var(--pink);
+    }
+
+    .live-count {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .live-dot {
+      width: 12px; height: 12px;
+      background: var(--pink);
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.3); }
+    }
+
+    .live-count span {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--pink);
+    }
+
+    /* Filter buttons */
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .filter-btn {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 10px 20px;
+      border: 3px solid #000;
+      box-shadow: 3px 3px 0 #000;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #fff;
+      background: rgba(255,255,255,0.1);
+    }
+
+    .filter-btn:hover { background: rgba(255,255,255,0.2); }
+
+    .filter-btn.active {
+      background: var(--yellow);
+      color: #000;
+    }
+
+    .filter-btn.referee {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+
+    .filter-btn.referee.active {
+      background: var(--green);
+      color: #000;
+    }
+
+    /* Referee input */
+    .referee-input {
+      max-width: 400px;
+      margin: 0 auto 32px;
+    }
+
+    .referee-input label {
+      display: block;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 8px;
+    }
+
+    .referee-input input {
+      width: 100%;
+      background: rgba(255,255,255,0.1);
+      border: 3px solid #000;
+      color: #fff;
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      padding: 12px 16px;
+      outline: none;
+    }
+
+    .referee-input input:focus {
+      border-color: var(--yellow);
+    }
+
+    /* Match cards */
+    .match-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 24px;
+    }
+
+    .match-card {
+      border: 3px solid #000;
+      box-shadow: var(--shadow-sm);
+      padding: 24px;
+      background: rgba(255,255,255,0.05);
+      transition: all 0.2s;
+    }
+
+    .match-card.is-live {
+      background: rgba(255,45,111,0.1);
+      border-color: var(--pink);
+    }
+
+    .match-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .match-round {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .match-status {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border: 2px solid #000;
+    }
+
+    .match-status.live {
+      background: var(--pink);
+      color: #fff;
+    }
+
+    .match-status.finished {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .match-status.upcoming {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    .match-status .live-indicator {
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: #fff;
+      border-radius: 50%;
+      animation: pulse 1s infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .match-score {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .match-player {
+      flex: 1;
+      text-align: center;
+    }
+
+    .match-player .name {
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .match-player .score {
+      font-size: 48px;
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      line-height: 1;
+      margin-top: 8px;
+    }
+
+    .match-player .score.leading {
+      color: var(--yellow);
+    }
+
+    .match-vs {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      color: rgba(255,255,255,0.3);
+      font-weight: 700;
+    }
+
+    /* Referee controls */
+    .referee-controls {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 2px dashed rgba(255,255,255,0.2);
+    }
+
+    .referee-controls-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .referee-row {
+      display: flex;
+      gap: 16px;
+    }
+
+    .referee-col {
+      flex: 1;
+    }
+
+    .referee-col .player-name {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      font-weight: 700;
+      margin-bottom: 8px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .score-btn {
+      width: 100%;
+      padding: 8px;
+      border: 2px solid #000;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .score-btn.point { background: var(--blue); color: #fff; }
+    .score-btn.point:hover { background: #0066dd; }
+
+    .score-btn.undo {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+    }
+
+    .score-btn.undo:hover { background: rgba(255,255,255,0.2); }
+
+    .status-btn {
+      width: 100%;
+      padding: 8px;
+      border: 2px solid #000;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+
+    .status-btn.start { background: var(--green); color: #000; }
+    .status-btn.finish { background: var(--yellow); color: #000; }
+
+    .edit-btn {
+      width: 100%;
+      margin-top: 16px;
+      padding: 8px;
+      background: var(--green);
+      color: #000;
+      border: 2px solid #000;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .edit-btn:hover { background: #00b348; }
+
+    .close-btn {
+      width: 100%;
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border: 2px solid #000;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ============ SCHEDULE FLOW ============ */
+    .schedule-flow {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0;
+      margin-top: 40px;
+    }
+
+    .schedule-box {
+      padding: 24px 32px;
+      border: 3px solid #000;
+      box-shadow: var(--shadow-sm);
+      text-align: center;
+      min-width: 200px;
+    }
+
+    .schedule-arrow {
+      display: flex;
+      align-items: center;
+      font-size: 24px;
+      padding: 0 8px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    /* ============ EMPTY STATE ============ */
+    .empty-state {
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      color: rgba(255,255,255,0.5);
+      padding: 48px;
+      border: 3px dashed rgba(255,255,255,0.2);
+    }
+
+    /* ============ FOOTER ============ */
+    footer {
+      background: #000;
+      border-top: 3px solid #000;
+      padding: 48px 24px;
+      text-align: center;
+    }
+
+    footer .title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    footer .subtitle {
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+      margin-bottom: 24px;
+    }
+
+    footer .links {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    footer .links a {
+      color: rgba(255,255,255,0.6);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color 0.2s;
+    }
+
+    footer .links a:hover { color: var(--yellow); }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .match-grid { grid-template-columns: 1fr; }
+      .referee-row { gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav>
+    <div class="nav-brand">
+      <div class="icon">🏓</div>
+      <span>MAPID PONG</span>
+    </div>
+    <div class="nav-links">
+      <a href="#home" class="active">Home</a>
+      <a href="#info">Info</a>
+      <a href="#livescore">Live Score</a>
+      <a href="#rules">Aturan</a>
+      <a href="#peserta">Peserta</a>
+      <a href="#standings">Klasemen</a>
+      <a href="#bracket">Bracket</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section id="home" class="hero">
+    <div class="hero-badge">🗺️ Mapid Presents</div>
+    <h1>
+      <span class="text-blue">PING</span>
+      <span class="text-pink">PONG</span><br>
+      <span class="text-yellow">TOURNAMENT</span>
+      <span class="text-green">2026</span>
+    </h1>
+    <p>Turnamen pingpong Mapid — Singles & Doubles, Klasemen hingga Knockout!</p>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
+      <a href="#peserta" class="neo-btn" style="background:var(--yellow);color:#000">Lihat Peserta</a>
+      <a href="#standings" class="neo-btn" style="background:var(--blue);color:#fff">Klasemen</a>
+      <a href="#bracket" class="neo-btn" style="background:var(--green);color:#000">Bracket</a>
+      <a href="#rules" class="neo-btn" style="background:transparent;color:#fff;border-color:#fff">Baca Aturan</a>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="num" style="color:var(--blue)">15</div>
+        <div class="label">Peserta</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num" style="color:var(--pink)">2</div>
+        <div class="label">Kategori</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num" style="color:var(--green)">4</div>
+        <div class="label">Grup</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num" style="color:var(--yellow)">1</div>
+        <div class="label">Juara</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOURNAMENT INFO -->
+  <section id="info" class="section-dark">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge" style="background:var(--pink);color:#fff">Tournament Info</div>
+        <h2>Informasi Turnamen</h2>
+      </div>
+
+      <div class="schedule-flow">
+        <div style="display:flex;align-items:stretch">
+          <div class="schedule-box" style="background:var(--blue);color:#fff">
+            <div class="mono" style="font-size:14px;font-weight:700;text-transform:uppercase;margin-bottom:4px">Juli 2026</div>
+            <div style="font-size:20px;font-weight:700">Babak Kualifikasi</div>
+            <div style="font-size:12px;margin-top:4px;opacity:0.7">Group Stage — Klasemen</div>
+          </div>
+          <div class="schedule-arrow">→</div>
+        </div>
+        <div class="schedule-box" style="background:var(--green);color:#000">
+          <div class="mono" style="font-size:14px;font-weight:700;text-transform:uppercase;margin-bottom:4px">Agustus 2026</div>
+          <div style="font-size:20px;font-weight:700">Knockout Phase</div>
+          <div style="font-size:12px;margin-top:4px;opacity:0.7">Upper & Lower Bracket</div>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="icon-box" style="background:var(--yellow)">📍</div>
+          <h3>Lokasi</h3>
+          <ul>
+            <li><strong>MAPID Parking Lot Court</strong></li>
+            <li>Outdoor ping pong setup</li>
+            <li>Meja standar turnamen</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="icon-box" style="background:var(--green)">👤</div>
+          <h3>Singles</h3>
+          <ul>
+            <li>1 lawan 1</li>
+            <li>15 peserta</li>
+            <li>4 grup (3-4 orang)</li>
+            <li>Top 2 per grup → Knockout</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="icon-box" style="background:var(--blue)">👥</div>
+          <h3>Doubles</h3>
+          <ul>
+            <li>2 lawan 2</li>
+            <li>8 tim (16 peserta)</li>
+            <li>2 grup × 4 tim</li>
+            <li>Top 2 per grup → Knockout</li>
+          </ul>
+        </div>
+        <div class="info-card">
+          <div class="icon-box" style="background:var(--pink)">🏆</div>
+          <h3>Format Turnamen</h3>
+          <ul>
+            <li><strong>Fase 1:</strong> Group Stage (Round Robin)</li>
+            <li><strong>Fase 2:</strong> Double Elimination</li>
+            <li>Upper Bracket + Lower Bracket</li>
+            <li>Grand Final: Winner UB vs Winner LB</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="format-grid">
+        <div class="format-box border-blue">
+          <h4>🔵 Skor Pertandingan</h4>
+          <ul>
+            <li>Best of 5 games</li>
+            <li>Setiap game sampai 11 poin</li>
+            <li>Deuce di 10-10 (selisih 2)</li>
+            <li>Change serves setiap 2 poin</li>
+          </ul>
+        </div>
+        <div class="format-box border-green">
+          <h4>🟢 Klasemen Group</h4>
+          <ul>
+            <li>Menang = 2 poin</li>
+            <li>Kalah = 0 poin</li>
+            <li>Seri = masing-masing 1 poin</li>
+            <li>Tie-break: Head-to-head → Game ratio</li>
+          </ul>
+        </div>
+        <div class="format-box border-pink">
+          <h4>🔴 Knockout Format</h4>
+          <ul>
+            <li>8 pemain: 4 Upper, 4 Lower</li>
+            <li>Kalah di UB → turun ke LB</li>
+            <li>Kalah di LB → eliminasi</li>
+            <li>Grand Final: BO5, reset jika UB winner</li>
+          </ul>
+        </div>
+        <div class="format-box border-yellow">
+          <h4>🟡 Juara & Hadiah</h4>
+          <ul>
+            <li>Juara 1: Trofi + hadiah</li>
+            <li>Juara 2: Trofi + hadiah</li>
+            <li>Juara 3: Medali</li>
+            <li>Fair play award</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVE SCORE -->
+  <section id="livescore" class="section-dark">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge live-badge">Live Score</div>
+        <h2>Skor Langsung</h2>
+        <div class="live-count">
+          <div class="live-dot"></div>
+          <span>2 match sedang berlangsung</span>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-row">
+        <button class="filter-btn">Semua</button>
+        <button class="filter-btn active">Live</button>
+        <button class="filter-btn">Upcoming</button>
+        <button class="filter-btn">Selesai</button>
+        <button class="filter-btn referee" onclick="toggleReferee()">Mode Wasit</button>
+      </div>
+
+      <!-- Referee Input (hidden by default) -->
+      <div class="referee-input" id="refereeInput" style="display:none">
+        <label>Nama Wasit:</label>
+        <input type="text" placeholder="Masukkan nama wasit...">
+      </div>
+
+      <!-- Match Cards -->
+      <div class="match-grid">
+
+        <!-- Match 1 - Live -->
+        <div class="match-card is-live">
+          <div class="match-header">
+            <span class="match-round">Group Stage / Group A</span>
+            <span class="match-status live">
+              <span class="live-indicator"></span>
+              LIVE
+            </span>
+          </div>
+          <div class="match-score">
+            <div class="match-player">
+              <div class="name">Andi</div>
+              <div class="score leading">11</div>
+            </div>
+            <div class="match-vs">VS</div>
+            <div class="match-player">
+              <div class="name">Budi</div>
+              <div class="score">8</div>
+            </div>
+          </div>
+          <div class="referee-controls" id="referee1" style="display:none">
+            <div class="referee-controls-title">Kontrol Skor</div>
+            <div class="referee-row">
+              <div class="referee-col">
+                <div class="player-name">Andi</div>
+                <button class="score-btn point">+1 Poin</button>
+                <button class="score-btn undo">Undo</button>
+              </div>
+              <div class="referee-col">
+                <div class="player-name">Budi</div>
+                <button class="score-btn point" style="background:var(--pink)">+1 Poin</button>
+                <button class="score-btn undo">Undo</button>
+              </div>
+            </div>
+            <button class="status-btn finish">Selesai</button>
+          </div>
+          <button class="edit-btn" id="editBtn1" style="display:none" onclick="toggleEdit(1)">Edit Skor</button>
+        </div>
+
+        <!-- Match 2 - Live -->
+        <div class="match-card is-live">
+          <div class="match-header">
+            <span class="match-round">Group Stage / Group A</span>
+            <span class="match-status live">
+              <span class="live-indicator"></span>
+              LIVE
+            </span>
+          </div>
+          <div class="match-score">
+            <div class="match-player">
+              <div class="name">Citra</div>
+              <div class="score">7</div>
+            </div>
+            <div class="match-vs">VS</div>
+            <div class="match-player">
+              <div class="name">Dewi</div>
+              <div class="score leading">10</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Match 3 - Upcoming -->
+        <div class="match-card">
+          <div class="match-header">
+            <span class="match-round">Group Stage / Group B</span>
+            <span class="match-status upcoming">UPCOMING</span>
+          </div>
+          <div class="match-score">
+            <div class="match-player">
+              <div class="name">Eko</div>
+              <div class="score">0</div>
+            </div>
+            <div class="match-vs">VS</div>
+            <div class="match-player">
+              <div class="name">Firmansyah</div>
+              <div class="score">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Match 4 - Finished -->
+        <div class="match-card">
+          <div class="match-header">
+            <span class="match-round">Group Stage / Group B</span>
+            <span class="match-status finished">SELESAI</span>
+          </div>
+          <div class="match-score">
+            <div class="match-player">
+              <div class="name">Gita</div>
+              <div class="score">11</div>
+            </div>
+            <div class="match-vs">VS</div>
+            <div class="match-player">
+              <div class="name">Hendra</div>
+              <div class="score">9</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Match 5 - Doubles -->
+        <div class="match-card">
+          <div class="match-header">
+            <span class="match-round">Group Stage / Group C</span>
+            <span class="match-status upcoming">UPCOMING</span>
+          </div>
+          <div class="match-score">
+            <div class="match-player">
+              <div class="name">Indra & Joko</div>
+              <div class="score">0</div>
+            </div>
+            <div class="match-vs">VS</div>
+            <div class="match-player">
+              <div class="name">Kartika & Lina</div>
+              <div class="score">0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Match 6 - Finished Doubles -->
+        <div class="match-card">
+          <div class="match-header">
+            <span class="match-round">Group Stage / Group C</span>
+            <span class="match-status finished">SELESAI</span>
+          </div>
+          <div class="match-score">
+            <div class="match-player">
+              <div class="name">Maya & Nina</div>
+              <div class="score">11</div>
+            </div>
+            <div class="match-vs">VS</div>
+            <div class="match-player">
+              <div class="name">Omar & Putra</div>
+              <div class="score">6</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME RULES -->
+  <section id="rules" class="section-darker">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-badge" style="background:var(--blue);color:#fff">Game Rules</div>
+        <h2>Aturan Permainan</h2>
+      </div>
+
+      <div style="max-width:900px;margin:0 auto">
+        <!-- Singles Rules -->
+        <div style="background:#fff;color:#000;border:3px solid #000;box-shadow:6px 6px 0 #000;margin-bottom:24px">
+          <div style="padding:24px 32px;border-bottom:3px solid #000;background:var(--blue);color:#fff;display:flex;align-items:center;gap:12px">
+            <span style="font-size:24px">👤</span>
+            <h3 style="font-size:22px;font-weight:700">Aturan Tunggal (Singles)</h3>
+          </div>
+          <div style="padding:32px">
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #eee">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--blue);color:#fff;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">1</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Sistem Poin</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">Pertandingan dimainkan hingga <strong>11 poin</strong>. Jika skor 10-10 (Deuce), harus menang dengan selisih 2 poin.</p>
+              </div>
+            </div>
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #eee">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--green);color:#fff;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">2</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Aturan Servis</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">Servis bergantian setiap <strong>2 poin</strong>. Saat Deuce, servis bergantian setiap 1 poin.</p>
+              </div>
+            </div>
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #eee">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--pink);color:#fff;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">3</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Arah Servis & Pukulan</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">Bebas. Bola dapat diservis dari area mana saja dan dipantulkan ke area mana saja di meja lawan.</p>
+              </div>
+            </div>
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--yellow);color:#000;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">4</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Let</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">Jika bola servis menyentuh net dan masuk ke area lawan, servis diulang (tanpa penambahan poin).</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Doubles Rules -->
+        <div style="background:#fff;color:#000;border:3px solid #000;box-shadow:6px 6px 0 #000;margin-bottom:24px">
+          <div style="padding:24px 32px;border-bottom:3px solid #000;background:var(--green);color:#000;display:flex;align-items:center;gap:12px">
+            <span style="font-size:24px">👥</span>
+            <h3 style="font-size:22px;font-weight:700">Aturan Ganda (Doubles)</h3>
+          </div>
+          <div style="padding:32px">
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #eee">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--blue);color:#fff;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">1</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Servis Diagonal</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">Servis <strong>wajib menyilang</strong> dari kotak sebelah kanan server ke kotak sebelah kanan penerima.</p>
+              </div>
+            </div>
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #eee">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--green);color:#fff;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">2</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Pukulan Bergantian</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">Rekan satu tim <strong>wajib memukul bola secara bergantian</strong>.</p>
+              </div>
+            </div>
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #eee">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--pink);color:#fff;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">3</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Rotasi Servis</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">Bergantian setiap 2 poin dengan urutan: Server → Penerima → Rekan Server → Rekan Penerima.</p>
+              </div>
+            </div>
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--yellow);color:#000;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">4</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Sistem Poin</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">Dimainkan hingga 11 poin, dengan aturan Deuce (harus selisih 2 poin) sama seperti tunggal.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bracket Rules -->
+        <div style="background:#fff;color:#000;border:3px solid #000;box-shadow:6px 6px 0 #000">
+          <div style="padding:24px 32px;border-bottom:3px solid #000;background:var(--pink);color:#fff;display:flex;align-items:center;gap:12px">
+            <span style="font-size:24px">🏆</span>
+            <h3 style="font-size:22px;font-weight:700">Sistem Bracket — Double Elimination</h3>
+          </div>
+          <div style="padding:32px">
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #eee">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--blue);color:#fff;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">1</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Group Stage (Kualifikasi)</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">Peserta dibagi ke dalam <strong>4 grup</strong>. Setiap grup bermain round robin. <strong>Top 2</strong> melaju ke Knockout.</p>
+              </div>
+            </div>
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #eee">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--green);color:#fff;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">2</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Upper Bracket (WB)</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">8 peserta terbaik dari klasemen. Pemenang tetap di Upper Bracket. Kalah → turun ke Lower Bracket.</p>
+              </div>
+            </div>
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0;border-bottom:1px solid #eee">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--pink);color:#fff;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">3</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Lower Bracket (LB)</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">Peserta yang kalah dari Upper Bracket masuk ke sini. Kalah di LB → <strong>eliminasi</strong>.</p>
+              </div>
+            </div>
+            <div class="rule-item" style="display:flex;gap:16px;padding:16px 0">
+              <div style="width:32px;min-width:32px;height:32px;background:var(--yellow);color:#000;border:2px solid #000;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:13px">4</div>
+              <div>
+                <h4 style="font-size:15px;font-weight:700;margin-bottom:4px">Grand Final</h4>
+                <p style="font-size:14px;color:#666;line-height:1.6">Winner Upper Bracket vs Winner Lower Bracket. <strong>Best of 5</strong>. Jika winner UB kalah, ada <strong>Bracket Reset</strong>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="title">🏓 MAPID PING PONG TOURNAMENT 2026</div>
+    <div class="subtitle">Connected Future — mapid.co.id/MapidPong</div>
+    <div class="links">
+      <a href="#home">Home</a>
+      <a href="#info">Info</a>
+      <a href="#rules">Aturan</a>
+      <a href="#peserta">Peserta</a>
+      <a href="#standings">Klasemen</a>
+      <a href="#bracket">Bracket</a>
+    </div>
+  </footer>
+
+  <script>
+    let refereeMode = false;
+
+    function toggleReferee() {
+      refereeMode = !refereeMode;
+      const btn = document.querySelector('.filter-btn.referee');
+      const input = document.getElementById('refereeInput');
+      const editBtns = document.querySelectorAll('.edit-btn');
+      const controls = document.querySelectorAll('.referee-controls');
+
+      btn.classList.toggle('active', refereeMode);
+      input.style.display = refereeMode ? 'block' : 'none';
+
+      editBtns.forEach(b => b.style.display = refereeMode ? 'block' : 'none');
+      if (!refereeMode) {
+        controls.forEach(c => c.style.display = 'none');
+      }
+    }
+
+    function toggleEdit(id) {
+      const controls = document.getElementById('referee' + id);
+      const btn = document.getElementById('editBtn' + id);
+      const isOpen = controls.style.display === 'block';
+
+      controls.style.display = isOpen ? 'none' : 'block';
+      btn.textContent = isOpen ? 'Edit Skor' : 'Tutup';
+    }
+
+    // Filter buttons
+    document.querySelectorAll('.filter-btn:not(.referee)').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn:not(.referee)').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  </script>
+
+</body>
+</html>

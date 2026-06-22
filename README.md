@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MAPID PONG - Ping Pong Tournament 2026
 
-## Getting Started
+Website turnamen pingpong internal Mapid dengan fitur Live Score dan SQL Editor.
 
-First, run the development server:
+## Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Framework**: Next.js 16 (App Router)
+- **UI**: React 19 + Tailwind CSS v4
+- **Database**: Supabase (PostgreSQL)
+- **Realtime**: Supabase Realtime Subscriptions
+- **Design**: Neo Brutalism
+
+## Fitur
+
+- **Hero** - Landing page dengan statistik peserta
+- **Tournament Info** - Jadwal, format, lokasi, hadiah
+- **Live Score** - Skor langsung real-time, mode wasit untuk input
+- **Game Rules** - Aturan singles, doubles, bracket
+- **Peserta** - Grid peserta terdaftar
+- **Klasemen** - Standings per grup (round robin)
+- **Bracket** - Double elimination bracket (UB + LB)
+- **SQL Editor** - Query editor langsung ke Supabase
+
+## Database
+
+### Tabel
+
+| Tabel | Deskripsi |
+|---|---|
+| `mapidpong_matches` | Semua pertandingan (singles & doubles) |
+| `mapidpong_score_logs` | Log perubahan skor (audit trail) |
+
+### Setup
+
+1. Buka Supabase Dashboard
+2. SQL Editor
+3. Copy paste isi `supabase-schema.sql`
+4. Jalankan query
+
+## Lokasi File
+
+```
+src/
+├── app/
+│   ├── page.tsx              # Main page (single page app)
+│   ├── layout.tsx            # Root layout + fonts
+│   ├── globals.css           # Tailwind + custom CSS
+│   └── sqleditor/
+│       └── page.tsx          # SQL Editor page
+├── components/
+│   ├── Navbar.tsx            # Fixed navigation
+│   ├── Marquee.tsx           # Scrolling ticker
+│   ├── Hero.tsx              # Landing hero
+│   ├── Info.tsx              # Tournament info cards
+│   ├── LiveScore.tsx         # Live score + referee mode
+│   ├── Rules.tsx             # Game rules (tabbed)
+│   ├── Peserta.tsx           # Participant grid
+│   ├── Standings.tsx         # Group standings
+│   ├── Bracket.tsx           # Double elimination bracket
+│   ├── Footer.tsx            # Site footer
+│   └── ScrollToTop.tsx       # Scroll to top button
+└── lib/
+    ├── api.ts                # Mapid API fetch + group logic
+    └── supabase.ts           # Supabase client + types
+
+supabase-schema.sql           # Database schema (run in Supabase)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Environment Variables
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://supabase.pijarteknologi.id
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Development
 
-## Learn More
+```bash
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Buka `http://localhost:3000`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Live Score
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Buka section `#livescore` atau klik nav "Live Score"
+- Toggle **Mode Wasit** untuk input skor
+- Masukkan nama wasit
+- Klik "Edit Skor" → +1 Poin / Undo / Ubah Status
+- Real-time: semua client otomatis update
 
-## Deploy on Vercel
+## SQL Editor
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Akses `/sqleditor`
+- Quick queries sidebar untuk query umum
+- Schema reference di bawah editor
+- Shortcut: `Ctrl/Cmd + Enter` untuk jalankan
