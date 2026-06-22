@@ -25,6 +25,7 @@ export default function Navbar() {
             src="/logo.png"
             alt="MAPID PONG Logo"
             fill
+            sizes="32px"
             className="object-contain"
           />
         </div>

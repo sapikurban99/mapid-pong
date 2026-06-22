@@ -1,41 +1,25 @@
-"use client"
-import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { api } from "@/lib/api";
 import Hero from "@/components/Hero";
 import Marquee from "@/components/Marquee";
 import Link from "next/link";
 
-interface DashboardStats {
-  playersCount: number;
-  liveMatchesCount: number;
-}
+export default async function HomeDashboard() {
+  // Fetch stats on the server — no loading spinner needed
+  let playersCount = 0;
+  let liveMatchesCount = 0;
 
-export default function HomeDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({ playersCount: 0, liveMatchesCount: 0 });
-  const [loading, setLoading] = useState<boolean>(true);
+  try {
+    const [playersRes, matchesRes] = await Promise.all([
+      supabase.from("mapidpong_players").select("id", { count: "exact", head: true }),
+      api.getMatches()
+    ]);
 
-  useEffect(() => {
-    async function loadStats() {
-      try {
-        const [playersRes, matchesRes] = await Promise.all([
-          supabase.from("mapidpong_players").select("id", { count: "exact", head: true }),
-          api.getMatches()
-        ]);
-
-        const playersCount = playersRes.count || 0;
-        const liveMatchesCount = matchesRes.filter(m => m.status === "live").length;
-
-        setStats({ playersCount, liveMatchesCount });
-      } catch (err) {
-        console.error("Error loading dashboard stats:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadStats();
-  }, []);
+    playersCount = playersRes.count || 0;
+    liveMatchesCount = matchesRes.filter(m => m.status === "live").length;
+  } catch (err) {
+    console.error("Error loading dashboard stats:", err);
+  }
 
   const menuItems = [
     {
@@ -89,18 +73,9 @@ export default function HomeDashboard() {
     }
   ];
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-navy flex flex-col items-center justify-center font-mono text-white">
-        <div className="text-4xl animate-bounce mb-4">🏓</div>
-        <div className="tracking-widest uppercase font-bold text-xs animate-pulse">MEMUAT DASHBOARD TOURNAMENT...</div>
-      </div>
-    );
-  }
-
   return (
     <>
-      <Hero participantCount={stats.playersCount} liveMatchCount={stats.liveMatchesCount} />
+      <Hero participantCount={playersCount} liveMatchCount={liveMatchesCount} />
       <Marquee />
 
       {/* Central Navigation Dashboard */}

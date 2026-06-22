@@ -18,6 +18,7 @@ export default function Hero({ participantCount, liveMatchCount }: HeroProps) {
           src="/logo.png"
           alt="MAPID PING PONG TOURNAMENT"
           fill
+          sizes="(max-width: 768px) 256px, 320px"
           className="object-contain filter drop-shadow-[5px_5px_0px_#000]"
           priority
         />
