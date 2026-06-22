@@ -211,11 +211,12 @@ export default function LiveDrawingPage() {
         throw new Error("Tidak ada data peserta untuk disimpan.");
       }
 
-      // 2. We use RPC to clear matches, logs, and players cleanly
+      // 2. We use RPC to clear matches, logs, and players cleanly using CTE to bypass exec_sql limitations
       const resetSql = `
-        TRUNCATE TABLE mapidpong_score_logs CASCADE;
-        TRUNCATE TABLE mapidpong_matches CASCADE;
-        TRUNCATE TABLE mapidpong_players CASCADE;
+        WITH deleted_logs AS (DELETE FROM mapidpong_score_logs RETURNING *),
+             deleted_matches AS (DELETE FROM mapidpong_matches RETURNING *),
+             deleted_players AS (DELETE FROM mapidpong_players RETURNING *)
+        SELECT 1 AS success
       `;
       const { error: resetError } = await supabase.rpc('exec_sql', { query_text: resetSql });
       if (resetError) throw resetError;
@@ -283,9 +284,10 @@ export default function LiveDrawingPage() {
     setSaving(true);
     try {
       const resetSql = `
-        TRUNCATE TABLE mapidpong_score_logs CASCADE;
-        TRUNCATE TABLE mapidpong_matches CASCADE;
-        TRUNCATE TABLE mapidpong_players CASCADE;
+        WITH deleted_logs AS (DELETE FROM mapidpong_score_logs RETURNING *),
+             deleted_matches AS (DELETE FROM mapidpong_matches RETURNING *),
+             deleted_players AS (DELETE FROM mapidpong_players RETURNING *)
+        SELECT 1 AS success
       `;
       const { error } = await supabase.rpc('exec_sql', { query_text: resetSql });
       if (error) throw error;
