@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { supabase } from "@/lib/supabase";
 import Peserta from "@/components/Peserta";
 import { DbPlayer } from "@/components/Peserta";

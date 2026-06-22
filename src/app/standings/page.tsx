@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { supabase, Match } from "@/lib/supabase";
 import { api } from "@/lib/api";
 import { DbPlayer } from "@/components/Peserta";

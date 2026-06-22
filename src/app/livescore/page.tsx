@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { api } from "@/lib/api";
 import { Match } from "@/lib/supabase";
 import LiveScoreClient from "@/components/LiveScoreClient";
