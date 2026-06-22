@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS mapidpong_matches (
   round TEXT NOT NULL DEFAULT 'group',
   match_order INTEGER,
   referee_name TEXT,
+  scheduled_date DATE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

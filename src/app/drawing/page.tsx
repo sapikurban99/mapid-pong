@@ -22,6 +22,11 @@ export default function LiveDrawingPage() {
   const [type, setType] = useState<"singles" | "doubles">("singles");
   const [groupCount, setGroupCount] = useState<number>(4);
 
+  // Scheduling Configuration
+  const [startDate, setStartDate] = useState<string>("2026-07-06");
+  const [endDate, setEndDate] = useState<string>("2026-07-17");
+  const [skipWeekends, setSkipWeekends] = useState<boolean>(true);
+
   // Drawing state
   const [drawingState, setDrawingState] = useState<"idle" | "drawing" | "completed">("idle");
   const [drawnGroups, setDrawnGroups] = useState<Record<GroupName, DrawnPlayer[]>>({
@@ -247,7 +252,13 @@ export default function LiveDrawingPage() {
       const res = await fetch("/api/drawing/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ players: playersToInsert, matches: matchesToInsert })
+        body: JSON.stringify({ 
+          players: playersToInsert, 
+          matches: matchesToInsert,
+          startDate,
+          endDate,
+          skipWeekends
+        })
       });
 
       if (!res.ok) {
@@ -373,6 +384,42 @@ export default function LiveDrawingPage() {
                     <option value={3}>3 Grup (A, B, C)</option>
                     <option value={4}>4 Grup (A, B, C, D)</option>
                   </select>
+                </div>
+
+                <div className="border-t-2 border-black/10 pt-3 mt-3 space-y-3">
+                  <h4 className="font-bold uppercase tracking-wider text-[10px] text-pink">📅 Pengaturan Jadwal</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block mb-1 text-[10px]">Tgl Mulai:</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full p-1.5 border-2 border-black rounded-none bg-white font-mono text-[10px] font-bold"
+                        disabled={drawingState === "drawing"}
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-[10px]">Tgl Selesai:</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full p-1.5 border-2 border-black rounded-none bg-white font-mono text-[10px] font-bold"
+                        disabled={drawingState === "drawing"}
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer font-mono text-[10px]">
+                    <input
+                      type="checkbox"
+                      checked={skipWeekends}
+                      onChange={(e) => setSkipWeekends(e.target.checked)}
+                      className="accent-black cursor-pointer"
+                      disabled={drawingState === "drawing"}
+                    />
+                    <span className="font-bold">Lewati Akhir Pekan (Sabtu/Minggu)</span>
+                  </label>
                 </div>
 
                 <div className="pt-2">

@@ -17,6 +17,7 @@ export type Match = {
   round: string;
   match_order: number | null;
   referee_name: string | null;
+  scheduled_date: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -2,6 +2,20 @@
 import { useState } from "react";
 import { Match } from "@/lib/supabase";
 import { api } from "@/lib/api";
+import MatchCalendar from "@/components/MatchCalendar";
+
+const formatDateIndonesian = (dateStr: string | null | undefined) => {
+  if (!dateStr) return null;
+  const parts = dateStr.split("-");
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const date = new Date(year, month, day);
+    return date.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
+  }
+  return dateStr;
+};
 
 interface LiveScoreProps {
   matches: Match[];
@@ -9,12 +23,19 @@ interface LiveScoreProps {
 
 export default function LiveScore({ matches }: LiveScoreProps) {
   const [filter, setFilter] = useState<"all" | "live" | "upcoming" | "finished">("all");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [showCalendar, setShowCalendar] = useState<boolean>(false);
   const [refereeMode, setRefereeMode] = useState<boolean>(false);
   const [refereeName, setRefereeName] = useState<string>("");
   const [activeEditId, setActiveEditId] = useState<string | null>(null);
 
-  const filteredMatches = matches.filter(m => filter === "all" || m.status === filter);
+  const filteredMatches = matches.filter((m) => {
+    const statusOk = filter === "all" || m.status === filter;
+    const dateOk = !selectedDate || m.scheduled_date === selectedDate;
+    return statusOk && dateOk;
+  });
   const liveCount = matches.filter(m => m.status === "live").length;
+  const selectedDateLabel = formatDateIndonesian(selectedDate);
 
   const handleAddPoint = async (match: Match, playerNum: 1 | 2) => {
     if (!refereeName.trim()) return alert("Masukkan nama wasit terlebih dahulu!");
@@ -50,7 +71,7 @@ export default function LiveScore({ matches }: LiveScoreProps) {
         </div>
 
         {/* Filter Toolbar Nav */}
-        <div className="flex flex-wrap justify-center gap-3 mb-8">
+        <div className="flex flex-wrap justify-center gap-3 mb-6">
           {(["all", "live", "upcoming", "finished"] as const).map((t) => (
             <button
               key={t}
@@ -62,6 +83,15 @@ export default function LiveScore({ matches }: LiveScoreProps) {
             </button>
           ))}
           <button
+            onClick={() => setShowCalendar((v) => !v)}
+            className={`font-mono text-xs font-bold uppercase px-5 py-2.5 border-3 border-black shadow-[3px_3px_0_#000] cursor-pointer transition-all flex items-center gap-2 ${showCalendar || selectedDate ? "bg-blue text-white" : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+          >
+            <span>📅</span>
+            <span>Kalender</span>
+            {selectedDate && <span className="bg-yellow text-black px-1.5 py-0.5 border border-black text-[9px]">1</span>}
+          </button>
+          <button
             onClick={() => setRefereeMode(!refereeMode)}
             className={`font-mono text-xs font-bold uppercase px-5 py-2.5 border-3 border-black shadow-[3px_3px_0_#000] cursor-pointer transition-all ${refereeMode ? "bg-green text-black" : "bg-white/10 text-white hover:bg-white/20"
               }`}
@@ -69,6 +99,31 @@ export default function LiveScore({ matches }: LiveScoreProps) {
             Mode Wasit {refereeMode ? "ON" : "OFF"}
           </button>
         </div>
+
+        {/* Calendar Filter */}
+        {showCalendar && (
+          <MatchCalendar
+            matches={matches}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+          />
+        )}
+
+        {/* Active Date Indicator */}
+        {selectedDate && selectedDateLabel && (
+          <div className="max-w-2xl mx-auto mb-6 flex flex-wrap items-center justify-center gap-3 font-mono text-xs">
+            <span className="text-white/60 uppercase">Menampilkan tanggal:</span>
+            <span className="bg-yellow text-black px-3 py-1 border-2 border-black shadow-[2px_2px_0_#000] font-bold uppercase">
+              {selectedDateLabel}
+            </span>
+            <button
+              onClick={() => setSelectedDate(null)}
+              className="bg-white/10 text-white px-3 py-1 border-2 border-black shadow-[2px_2px_0_#000] font-bold uppercase hover:bg-white/20 cursor-pointer"
+            >
+              ✕ Hapus
+            </button>
+          </div>
+        )}
 
         {/* Input Otentikasi Wasit Sederhana */}
         {refereeMode && (
@@ -84,21 +139,37 @@ export default function LiveScore({ matches }: LiveScoreProps) {
           </div>
         )}
 
+        {filteredMatches.length === 0 && (
+          <div className="text-center py-16 font-mono text-white/60">
+            <div className="text-5xl mb-3">🏓</div>
+            <div className="text-sm uppercase tracking-wider">Tidak ada pertandingan untuk filter ini</div>
+          </div>
+        )}
+
         {/* Grid Render Match Card */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredMatches.map((match) => (
-            <div key={match.id} className={`box-neo p-6 transition-all ${match.status === "live" ? "bg-pink/10 border-pink" : "bg-white/5 border-black"}`}>
-              <div className="flex justify-between items-center mb-4">
-                <span className="font-mono text-[10px] font-bold text-white/50 tracking-wider uppercase">
-                  MATCH #{match.match_order || '?'} • {match.round} {match.group_name && `/ ${match.group_name}`}
-                </span>
-                <span className={`font-mono text-[10px] font-bold px-3 py-1 border-2 border-black uppercase ${match.status === "live" ? "bg-pink text-white" : match.status === "finished" ? "bg-green text-black" : "bg-white/20 text-white"
-                  }`}>
-                  {match.status}
-                </span>
-              </div>
+          {filteredMatches.map((match) => {
+            const formattedDate = formatDateIndonesian(match.scheduled_date);
+            return (
+              <div key={match.id} className={`box-neo p-6 transition-all ${match.status === "live" ? "bg-pink/10 border-pink" : "bg-white/5 border-black"}`}>
+                <div className="flex justify-between items-center mb-4">
+                  <span className="font-mono text-[10px] font-bold text-white/50 tracking-wider uppercase">
+                    MATCH #{match.match_order || '?'} • {match.round} {match.group_name && `/ ${match.group_name}`}
+                  </span>
+                  <span className={`font-mono text-[10px] font-bold px-3 py-1 border-2 border-black uppercase ${match.status === "live" ? "bg-pink text-white" : match.status === "finished" ? "bg-green text-black" : "bg-white/20 text-white"
+                    }`}>
+                    {match.status}
+                  </span>
+                </div>
 
-              <div className="flex items-center justify-between gap-4 my-6">
+                {formattedDate && (
+                  <div className="mb-4 -mt-2 flex items-center gap-1.5 font-mono text-[10px] text-yellow font-bold uppercase">
+                    <span>📅</span>
+                    <span>{formattedDate}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-4 my-6">
                 <div className="flex-1 text-center">
                   <div className="font-bold text-lg line-clamp-1">{match.player1}</div>
                   <div className={`text-5xl font-mono font-bold mt-2 ${match.score1 > match.score2 && match.status !== "upcoming" ? "text-yellow" : "text-white"}`}>
@@ -151,8 +222,9 @@ export default function LiveScore({ matches }: LiveScoreProps) {
                   )}
                 </div>
               )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
