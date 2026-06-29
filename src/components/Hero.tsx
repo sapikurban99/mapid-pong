@@ -17,7 +17,7 @@ export default function Hero({ participantCount, singlesCount, doublesCount, liv
       {/* Prominent Logo Image */}
       <div className="relative w-64 h-64 md:w-80 md:h-80 mb-6 shrink-0 transition-transform hover:scale-105 duration-300">
         <Image
-          src="/logo.png?v=2"
+          src="/logo-v2.png"
           alt="TOYO SENSING PING PONG TOURNAMENT"
           fill
           sizes="(max-width: 768px) 256px, 320px"
