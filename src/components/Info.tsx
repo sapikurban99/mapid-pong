@@ -31,6 +31,58 @@ export default function Info() {
           </div>
         </div>
 
+        {/* Prize Pool Banner */}
+        <div className="mb-16">
+          <div className="box-neo bg-yellow border-4 border-black p-8 md:p-12 text-center transform hover:-translate-y-2 transition-transform duration-300">
+            <h3 className="font-mono text-sm md:text-base font-bold uppercase tracking-widest text-black/70 mb-2">Total Hadiah & Penghargaan</h3>
+            <div className="text-5xl md:text-7xl font-bold font-mono text-black mb-8 drop-shadow-[4px_4px_0_#fff]">Rp 2.100.000</div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 max-w-4xl mx-auto text-left">
+              <div className="bg-white p-6 border-3 border-black shadow-[4px_4px_0_#000]">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">👤</span>
+                  <h4 className="text-2xl font-bold">Hadiah Singles</h4>
+                </div>
+                <div className="space-y-3 font-mono text-sm md:text-base font-bold">
+                  <div className="flex justify-between items-center border-b-2 border-black/10 pb-2">
+                    <span>Juara 1 🥇</span>
+                    <span className="text-green text-lg">Rp 400.000</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b-2 border-black/10 pb-2">
+                    <span>Juara 2 🥈</span>
+                    <span className="text-blue text-lg">Rp 200.000</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2">
+                    <span>Juara 3 🥉</span>
+                    <span className="text-pink text-lg">Rp 100.000</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-6 border-3 border-black shadow-[4px_4px_0_#000]">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-3xl">👥</span>
+                  <h4 className="text-2xl font-bold">Hadiah Doubles</h4>
+                </div>
+                <div className="space-y-3 font-mono text-sm md:text-base font-bold">
+                  <div className="flex justify-between items-center border-b-2 border-black/10 pb-2">
+                    <span>Juara 1 🥇</span>
+                    <span className="text-green text-lg">Rp 800.000</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b-2 border-black/10 pb-2">
+                    <span>Juara 2 🥈</span>
+                    <span className="text-blue text-lg">Rp 400.000</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2">
+                    <span>Juara 3 🥉</span>
+                    <span className="text-pink text-lg">Rp 200.000</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Cards Grid Info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {cards.map((c, i) => (

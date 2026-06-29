@@ -7,7 +7,7 @@ export default function Footer() {
         🏓 TOYO SENSING PING PONG TOURNAMENT 2026
       </div>
       <div className="font-mono text-xs text-white/40 mb-6">
-        Sponsored by — <a href="https://toyo-sensing.co.id" target="_blank" rel="noreferrer" className="text-yellow hover:underline">toyo-sensing.co.id</a>
+        Sponsored by — <a href="https://toyo-alpha.mapid.io/" target="_blank" rel="noreferrer" className="text-yellow hover:underline">toyo-alpha.mapid.io</a>
       </div>
       <div className="flex flex-wrap justify-center gap-6 font-mono text-xs">
         <Link href="/" className="text-white/60 hover:text-yellow">Home</Link>
