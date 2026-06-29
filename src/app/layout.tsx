@@ -17,8 +17,8 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MAPID PONG - Ping Pong Tournament 2026",
-  description: "Turnamen pingpong internal Mapid dengan sistem Realtime Live Score.",
+  title: "TOYO SENSING PONG - Ping Pong Tournament 2026",
+  description: "Turnamen pingpong internal TOYO SENSING dengan sistem Realtime Live Score.",
 };
 
 export default function RootLayout({

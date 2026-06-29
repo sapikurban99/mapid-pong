@@ -1,6 +1,6 @@
-# MAPID PONG - Ping Pong Tournament 2026
+# TOYO SENSING PONG - Ping Pong Tournament 2026
 
-Website turnamen pingpong internal Mapid dengan fitur Live Score dan SQL Editor.
+Website turnamen pingpong internal TOYO SENSING dengan fitur Live Score dan SQL Editor.
 
 ## Tech Stack
 
@@ -60,7 +60,7 @@ src/
 │   ├── Footer.tsx            # Site footer
 │   └── ScrollToTop.tsx       # Scroll to top button
 └── lib/
-    ├── api.ts                # Mapid API fetch + group logic
+    ├── api.ts                # Toyo Sensing API fetch + group logic
     └── supabase.ts           # Supabase client + types
 
 supabase-schema.sql           # Database schema (run in Supabase)

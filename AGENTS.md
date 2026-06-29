@@ -4,7 +4,7 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# Mapid Pong — Agent Guidelines
+# Toyo Sensing Pong — Agent Guidelines
 
 Compact rules to avoid known pitfalls. Every line here is something an agent would likely get wrong without help.
 
@@ -57,11 +57,13 @@ const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts
 ## Architecture Notes
 
 - **Single page app**: main page at `src/app/page.tsx` composes all sections; sub-pages exist for `/livescore`, `/standings`, `/peserta`, `/drawing`, `/bracket`, `/rules`, `/info`
-- **API routes**: `src/app/api/players/` (external Mapid API proxy), `src/app/api/drawing/save/` (insert matches), `src/app/api/drawing/reset/` (calls `reset_tournament` RPC), `src/app/api/drawing/reset-type/` (deletes only one type), `src/app/api/admin/schedule-existing/` (redistribute match dates)
+- **API routes**: `src/app/api/players/` (external Toyo Sensing API proxy), `src/app/api/drawing/save/` (insert matches), `src/app/api/drawing/reset/` (calls `reset_tournament` RPC), `src/app/api/drawing/reset-type/` (deletes only one type), `src/app/api/admin/schedule-existing/` (redistribute match dates)
 - **Database tables**: `mapidpong_matches`, `mapidpong_score_logs`, `mapidpong_players` — schema in `supabase-schema.sql`
+- **Pending DB migration**: Add `wo` to status CHECK + `wo_player TEXT` column (SQL provided in conversation)
 - **Realtime**: `LiveScoreClient` and `StandingsClient` subscribe to Supabase Realtime channels for live score updates
 - **Fonts**: Space Grotesk (sans) + Space Mono (mono), loaded via `next/font/google`
 - **Supabase client**: shared singleton in `src/lib/supabase.ts` — uses env vars `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- **Match type**: `src/lib/supabase.ts` defines `Match` with `status: "upcoming" | "live" | "finished"` (will add `"wo"` after migration)
 
 ## Drawing System (Singles & Doubles)
 
@@ -72,6 +74,13 @@ const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts
 - **Save flow**: `POST /api/drawing/save` accepts a `type` parameter and only resets data for that type, not all data.
 - **Reset**: Full reset (`/api/drawing/reset`) calls `reset_tournament()` RPC. Type-specific reset (`/api/drawing/reset-type`) deletes only one type.
 - **Match generation**: Round-robin within each group. Matches have `match_type` set to the drawing type and `round: "Group Stage"`.
+
+## Scoring Rules
+
+- **Menang = 3 poin**, **Kalah = 1 poin**, **Walk Out (WO) = 0 poin**
+- Standings dihitung client-side di `Standings.tsx` — hanya pertandingan `status: "finished"` atau `status: "wo"` yang dihitung
+- Tiebreaker: Poin desc → Menang desc → Kalah asc → Nama alfabetikal
+- Match `wo`: skor otomatis 0-0, `wo_player` field menandai siapa yang WO
 
 ## Filter Tabs Pattern
 

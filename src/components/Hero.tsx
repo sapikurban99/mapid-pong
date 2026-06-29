@@ -18,7 +18,7 @@ export default function Hero({ participantCount, singlesCount, doublesCount, liv
       <div className="relative w-64 h-64 md:w-80 md:h-80 mb-6 shrink-0 transition-transform hover:scale-105 duration-300">
         <Image
           src="/logo.png"
-          alt="MAPID PING PONG TOURNAMENT"
+          alt="TOYO SENSING PING PONG TOURNAMENT"
           fill
           sizes="(max-width: 768px) 256px, 320px"
           className="object-contain filter drop-shadow-[5px_5px_0px_#000]"
@@ -27,7 +27,7 @@ export default function Hero({ participantCount, singlesCount, doublesCount, liv
       </div>
 
       <p className="text-lg md:text-xl text-white/80 font-mono font-medium max-w-2xl mb-10 tracking-tight leading-relaxed">
-        Turnamen Ping Pong Internal MAPID — Kategori Singles & Doubles, Klasemen Grup Kualifikasi hingga Double Elimination Knockout!
+        Turnamen Ping Pong Internal TOYO SENSING — Kategori Singles & Doubles, Klasemen Grup Kualifikasi hingga Double Elimination Knockout!
       </p>
 
       <div className="flex flex-wrap gap-4 justify-center max-w-xl">

@@ -71,7 +71,7 @@ export default async function HomeDashboard() {
     },
     {
       title: "🎲 Live Drawing",
-      description: "Halaman khusus admin untuk assign grup pendaftar Mapid secara manual.",
+      description: "Halaman khusus admin untuk assign grup pendaftar secara manual.",
       href: "/drawing",
       bgClass: "bg-pink text-white border-black",
       btnText: "Mulai Drawing"

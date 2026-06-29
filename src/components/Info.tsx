@@ -1,6 +1,6 @@
 export default function Info() {
   const cards = [
-    { icon: "📍", title: "Lokasi", bg: "bg-yellow", items: ["MAPID Parking Lot Court", "Outdoor ping pong setup", "Meja standar turnamen internasional"] },
+    { icon: "📍", title: "Lokasi", bg: "bg-yellow", items: ["TOYO SENSING Parking Lot Court", "Outdoor ping pong setup", "Meja standar turnamen internasional"] },
     { icon: "👤", title: "Singles Kualifikasi", bg: "bg-green", items: ["1 Lawan 1", "15 Peserta Terdaftar", "4 Grup Terpisah", "Top 2 Melaju ke Knockout"] },
     { icon: "👥", title: "Doubles Kualifikasi", bg: "bg-blue", items: ["2 Lawan 2", "8 Tim Utama", "2 Grup Kombinasi", "Saling Bertukar Pukulan"] },
     { icon: "🏆", title: "Format Turnamen", bg: "bg-pink", items: ["Fase 1: Group Stage Robin", "Fase 2: Double Elimination", "Sistem Upper & Lower Bracket", "Grand Final Reset Bracket"] },
