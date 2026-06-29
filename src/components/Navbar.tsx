@@ -22,7 +22,7 @@ export default function Navbar() {
       <Link href="/" className="flex items-center gap-2.5 font-bold text-lg text-white no-underline">
         <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-black bg-white shrink-0">
           <Image
-            src="/logo.png"
+            src="/logo.png?v=2"
             alt="TOYO SENSING PONG Logo"
             fill
             sizes="32px"
