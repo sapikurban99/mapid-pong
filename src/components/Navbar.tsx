@@ -23,13 +23,13 @@ export default function Navbar() {
         <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-black bg-white shrink-0">
           <Image
             src="/logo-v2.png"
-            alt="TOYO SENSING PONG Logo"
+            alt="TOYO SENSING CUP 2026 Logo"
             fill
             sizes="32px"
             className="object-contain"
           />
         </div>
-        <span className="font-mono tracking-tight text-sm sm:text-base">TOYO SENSING PONG</span>
+        <span className="font-mono tracking-tight text-sm sm:text-base">TOYO SENSING CUP 2026</span>
       </Link>
 
       <div className="hidden lg:flex gap-1">

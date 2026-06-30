@@ -17,7 +17,7 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Toyo Sensing Pong",
+  title: "Toyo Sensing Cup 2026",
   description: "Turnamen pingpong terbuka TOYO SENSING dengan sistem Realtime Live Score.",
 };
 
