@@ -31,12 +31,16 @@ export default function LiveScore({ matches }: LiveScoreProps) {
   const [refereeMode, setRefereeMode] = useState<boolean>(false);
   const [refereeName, setRefereeName] = useState<string>("");
   const [activeEditId, setActiveEditId] = useState<string | null>(null);
+  const [searchName, setSearchName] = useState<string>("");
 
   const filteredMatches = matches.filter((m) => {
     const statusOk = statusFilter === "all" || m.status === statusFilter;
     const dateOk = !selectedDate || m.scheduled_date === selectedDate;
     const typeOk = typeFilter === "all" || m.match_type === typeFilter;
-    return statusOk && dateOk && typeOk;
+    const searchOk = !searchName || 
+      m.player1.toLowerCase().includes(searchName.toLowerCase()) || 
+      m.player2.toLowerCase().includes(searchName.toLowerCase());
+    return statusOk && dateOk && typeOk && searchOk;
   });
   const liveCount = matches.filter(m => m.status === "live").length;
   const selectedDateLabel = formatDateIndonesian(selectedDate);
@@ -126,6 +130,17 @@ export default function LiveScore({ matches }: LiveScoreProps) {
           >
             Mode Wasit {refereeMode ? "ON" : "OFF"}
           </button>
+        </div>
+
+        {/* Name Filter */}
+        <div className="max-w-md mx-auto mb-6">
+          <input
+            type="text"
+            value={searchName}
+            onChange={(e) => setSearchName(e.target.value)}
+            placeholder="🔍 Cari nama pemain..."
+            className="w-full bg-white/10 border-3 border-black text-white p-3 font-mono outline-none focus:border-yellow text-center placeholder:text-white/40"
+          />
         </div>
 
         {/* Calendar Filter */}
