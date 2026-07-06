@@ -35,5 +35,9 @@ export default function LiveScoreClient({ initialMatches }: LiveScoreClientProps
     };
   }, []);
 
-  return <LiveScore matches={matches} />;
+  const handleUpdate = (updatedMatch: Match) => {
+    setMatches((prev) => prev.map(m => m.id === updatedMatch.id ? updatedMatch : m));
+  };
+
+  return <LiveScore matches={matches} onUpdate={handleUpdate} />;
 }

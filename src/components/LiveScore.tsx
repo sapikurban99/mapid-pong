@@ -19,11 +19,12 @@ const formatDateIndonesian = (dateStr: string | null | undefined) => {
 
 interface LiveScoreProps {
   matches: Match[];
+  onUpdate: (updatedMatch: Match) => void;
 }
 
 type TypeFilter = "all" | "singles" | "doubles";
 
-export default function LiveScore({ matches }: LiveScoreProps) {
+export default function LiveScore({ matches, onUpdate }: LiveScoreProps) {
   const [statusFilter, setStatusFilter] = useState<"all" | "live" | "upcoming" | "finished">("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -48,18 +49,20 @@ export default function LiveScore({ matches }: LiveScoreProps) {
   const singlesMatches = matches.filter(m => m.match_type === "singles");
   const doublesMatches = matches.filter(m => m.match_type === "doubles");
 
-  const handleAddPoint = async (match: Match, playerNum: 1 | 2) => {
+  const handleAddRound = async (match: Match, playerNum: 1 | 2) => {
     if (!refereeName.trim()) return alert("Masukkan nama wasit terlebih dahulu!");
     const p1New = playerNum === 1 ? match.score1 + 1 : match.score1;
     const p2New = playerNum === 2 ? match.score2 + 1 : match.score2;
-    await api.updateScore(match.id, p1New, p2New, "point_add", refereeName, { p1: match.score1, p2: match.score2 });
+    await api.updateScore(match.id, p1New, p2New, "round_win", refereeName, { p1: match.score1, p2: match.score2 });
+    onUpdate({ ...match, score1: p1New, score2: p2New });
   };
 
   const handleUndo = async (match: Match, playerNum: 1 | 2) => {
     if (!refereeName.trim()) return alert("Masukkan nama wasit terlebih dahulu!");
     const p1New = playerNum === 1 ? Math.max(0, match.score1 - 1) : match.score1;
     const p2New = playerNum === 2 ? Math.max(0, match.score2 - 1) : match.score2;
-    await api.updateScore(match.id, p1New, p2New, "undo", refereeName, { p1: match.score1, p2: match.score2 });
+    await api.updateScore(match.id, p1New, p2New, "undo_round", refereeName, { p1: match.score1, p2: match.score2 });
+    onUpdate({ ...match, score1: p1New, score2: p2New });
   };
 
   const handleChangeStatus = async (matchId: string, nextStatus: "live" | "finished") => {
@@ -168,7 +171,7 @@ export default function LiveScore({ matches }: LiveScoreProps) {
           </div>
         )}
 
-        {/* Input Otentikasi Wasit Sederhana */}
+        {/* Input Otentikasi Wasit */}
         {refereeMode && (
           <div className="max-w-md mx-auto mb-10 font-mono text-sm">
             <label className="block mb-2 text-white/70">Nama Otoritas Wasit:</label>
@@ -193,6 +196,10 @@ export default function LiveScore({ matches }: LiveScoreProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMatches.map((match) => {
             const formattedDate = formatDateIndonesian(match.scheduled_date);
+            const p1Wins = match.score1;
+            const p2Wins = match.score2;
+            const isP1Leading = p1Wins > p2Wins && match.status !== "upcoming";
+            const isP2Leading = p2Wins > p1Wins && match.status !== "upcoming";
             return (
               <div key={match.id} className={`box-neo p-6 transition-all ${match.status === "live" ? "bg-pink/10 border-pink" : "bg-white/5 border-black"}`}>
                 <div className="flex justify-between items-center mb-4">
@@ -213,58 +220,63 @@ export default function LiveScore({ matches }: LiveScoreProps) {
                 )}
 
                 <div className="flex items-center justify-between gap-4 my-6">
-                <div className="flex-1 text-center">
-                  <div className="font-bold text-lg line-clamp-1">{match.player1}</div>
-                  <div className={`text-5xl font-mono font-bold mt-2 ${match.score1 > match.score2 && match.status !== "upcoming" ? "text-yellow" : "text-white"}`}>
-                    {match.score1}
-                  </div>
-                </div>
-                <div className="font-mono text-xs font-bold text-white/30">VS</div>
-                <div className="flex-1 text-center">
-                  <div className="font-bold text-lg line-clamp-1">{match.player2}</div>
-                  <div className={`text-5xl font-mono font-bold mt-2 ${match.score2 > match.score1 && match.status !== "upcoming" ? "text-yellow" : "text-white"}`}>
-                    {match.score2}
-                  </div>
-                </div>
-              </div>
-
-              {/* Referee Panel Panel Editor */}
-              {refereeMode && (
-                <div className="mt-4 pt-4 border-t-2 border-dashed border-white/20">
-                  {activeEditId !== match.id ? (
-                    <button
-                      onClick={() => setActiveEditId(match.id)}
-                      className="w-full bg-green text-black text-xs font-mono font-bold py-2 border-2 border-black"
-                    >
-                      Buka Panel Wasit
-                    </button>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex gap-2">
-                        <div className="flex-1 space-y-1">
-                          <button onClick={() => handleAddPoint(match, 1)} className="w-full bg-blue text-white text-xs font-mono py-1.5 border-2 border-black font-bold">+1 P1</button>
-                          <button onClick={() => handleUndo(match, 1)} className="w-full bg-white/10 text-white text-[10px] font-mono py-1 border-2 border-black">Undo</button>
-                        </div>
-                        <div className="flex-1 space-y-1">
-                          <button onClick={() => handleAddPoint(match, 2)} className="w-full bg-pink text-white text-xs font-mono py-1.5 border-2 border-black font-bold">+1 P2</button>
-                          <button onClick={() => handleUndo(match, 2)} className="w-full bg-white/10 text-white text-[10px] font-mono py-1 border-2 border-black">Undo</button>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        {match.status === "upcoming" && (
-                          <button onClick={() => handleChangeStatus(match.id, "live")} className="flex-1 bg-green text-black text-[10px] font-mono font-bold py-1.5 border-2 border-black">MULAI LIVE</button>
-                        )}
-                        {match.status === "live" && (
-                          <button onClick={() => handleChangeStatus(match.id, "finished")} className="flex-1 bg-yellow text-black text-[10px] font-mono font-bold py-1.5 border-2 border-black">SELESAIKAN GAME</button>
-                        )}
-                      </div>
-
-                      <button onClick={() => setActiveEditId(null)} className="w-full bg-white/20 text-white text-[10px] font-mono py-1">Tutup Panel</button>
+                  <div className="flex-1 text-center">
+                    <div className="font-bold text-lg line-clamp-1">{match.player1}</div>
+                    <div className={`text-5xl font-mono font-bold mt-2 ${isP1Leading ? "text-yellow" : "text-white"}`}>
+                      {p1Wins}
                     </div>
-                  )}
+                    <div className="font-mono text-[10px] text-white/40 mt-1 uppercase tracking-wider">Ronde</div>
+                  </div>
+                  <div className="font-mono text-xs font-bold text-white/30">VS</div>
+                  <div className="flex-1 text-center">
+                    <div className="font-bold text-lg line-clamp-1">{match.player2}</div>
+                    <div className={`text-5xl font-mono font-bold mt-2 ${isP2Leading ? "text-yellow" : "text-white"}`}>
+                      {p2Wins}
+                    </div>
+                    <div className="font-mono text-[10px] text-white/40 mt-1 uppercase tracking-wider">Ronde</div>
+                  </div>
                 </div>
-              )}
+
+                {/* Referee Panel */}
+                {refereeMode && (
+                  <div className="mt-4 pt-4 border-t-2 border-dashed border-white/20">
+                    {activeEditId !== match.id ? (
+                      <button
+                        onClick={() => setActiveEditId(match.id)}
+                        className="w-full bg-green text-black text-xs font-mono font-bold py-2 border-2 border-black"
+                      >
+                        Buka Panel Wasit
+                      </button>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="text-center font-mono text-[10px] text-white/50 uppercase tracking-wider">
+                          Klik untuk menambah ronde yang dimenangkan
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="flex-1 space-y-1">
+                            <button onClick={() => handleAddRound(match, 1)} className="w-full bg-blue text-white text-xs font-mono py-1.5 border-2 border-black font-bold">+1 Ronde P1</button>
+                            <button onClick={() => handleUndo(match, 1)} className="w-full bg-white/10 text-white text-[10px] font-mono py-1 border-2 border-black">Undo</button>
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <button onClick={() => handleAddRound(match, 2)} className="w-full bg-pink text-white text-xs font-mono py-1.5 border-2 border-black font-bold">+1 Ronde P2</button>
+                            <button onClick={() => handleUndo(match, 2)} className="w-full bg-white/10 text-white text-[10px] font-mono py-1 border-2 border-black">Undo</button>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          {match.status === "upcoming" && (
+                            <button onClick={() => handleChangeStatus(match.id, "live")} className="flex-1 bg-green text-black text-[10px] font-mono font-bold py-1.5 border-2 border-black">MULAI LIVE</button>
+                          )}
+                          {match.status === "live" && (
+                            <button onClick={() => handleChangeStatus(match.id, "finished")} className="flex-1 bg-yellow text-black text-[10px] font-mono font-bold py-1.5 border-2 border-black">SELESAIKAN GAME</button>
+                          )}
+                        </div>
+
+                        <button onClick={() => setActiveEditId(null)} className="w-full bg-white/20 text-white text-[10px] font-mono py-1">Tutup Panel</button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
