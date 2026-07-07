@@ -65,9 +65,10 @@ export default function LiveScore({ matches, onUpdate }: LiveScoreProps) {
     onUpdate({ ...match, score1: p1New, score2: p2New });
   };
 
-  const handleChangeStatus = async (matchId: string, nextStatus: "live" | "finished") => {
+  const handleChangeStatus = async (match: Match, nextStatus: "live" | "finished") => {
     if (!refereeName.trim()) return alert("Masukkan nama wasit terlebih dahulu!");
-    await api.updateStatus(matchId, nextStatus, refereeName);
+    await api.updateStatus(match.id, nextStatus, refereeName);
+    onUpdate({ ...match, status: nextStatus });
   };
 
   return (
@@ -265,10 +266,10 @@ export default function LiveScore({ matches, onUpdate }: LiveScoreProps) {
 
                         <div className="flex gap-2">
                           {match.status === "upcoming" && (
-                            <button onClick={() => handleChangeStatus(match.id, "live")} className="flex-1 bg-green text-black text-[10px] font-mono font-bold py-1.5 border-2 border-black">MULAI LIVE</button>
+                            <button onClick={() => handleChangeStatus(match, "live")} className="flex-1 bg-green text-black text-[10px] font-mono font-bold py-1.5 border-2 border-black">MULAI LIVE</button>
                           )}
                           {match.status === "live" && (
-                            <button onClick={() => handleChangeStatus(match.id, "finished")} className="flex-1 bg-yellow text-black text-[10px] font-mono font-bold py-1.5 border-2 border-black">SELESAIKAN GAME</button>
+                            <button onClick={() => handleChangeStatus(match, "finished")} className="flex-1 bg-yellow text-black text-[10px] font-mono font-bold py-1.5 border-2 border-black">SELESAIKAN GAME</button>
                           )}
                         </div>
 
