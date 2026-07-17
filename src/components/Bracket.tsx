@@ -355,7 +355,7 @@ export default function Bracket({ players, matches }: BracketProps) {
   const knockoutMatches = useMemo(
     () =>
       filteredMatches.filter(
-        (m) => m.round && m.round !== "Group Stage" && m.round !== "group"
+        (m) => m.round && m.round !== "Group Stage" && m.round !== "group" && m.round !== "Placement"
       ),
     [filteredMatches]
   );
