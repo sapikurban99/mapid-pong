@@ -23,10 +23,12 @@ interface LiveScoreProps {
 }
 
 type TypeFilter = "all" | "singles" | "doubles";
+type StageFilter = "all" | "group" | "bracket";
 
 export default function LiveScore({ matches, onUpdate }: LiveScoreProps) {
   const [statusFilter, setStatusFilter] = useState<"all" | "live" | "upcoming" | "finished">("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [stageFilter, setStageFilter] = useState<StageFilter>("all");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState<boolean>(false);
   const [refereeMode, setRefereeMode] = useState<boolean>(false);
@@ -34,20 +36,26 @@ export default function LiveScore({ matches, onUpdate }: LiveScoreProps) {
   const [activeEditId, setActiveEditId] = useState<string | null>(null);
   const [searchName, setSearchName] = useState<string>("");
 
+  const isGroupStage = (m: Match) => m.round === "group" || m.round === "Group Stage";
+  const isBracketStage = (m: Match) => !isGroupStage(m);
+
   const filteredMatches = matches.filter((m) => {
     const statusOk = statusFilter === "all" || m.status === statusFilter;
     const dateOk = !selectedDate || m.scheduled_date === selectedDate;
     const typeOk = typeFilter === "all" || m.match_type === typeFilter;
+    const stageOk = stageFilter === "all" || (stageFilter === "group" && isGroupStage(m)) || (stageFilter === "bracket" && isBracketStage(m));
     const searchOk = !searchName || 
       m.player1.toLowerCase().includes(searchName.toLowerCase()) || 
       m.player2.toLowerCase().includes(searchName.toLowerCase());
-    return statusOk && dateOk && typeOk && searchOk;
+    return statusOk && dateOk && typeOk && stageOk && searchOk;
   });
   const liveCount = matches.filter(m => m.status === "live").length;
   const selectedDateLabel = formatDateIndonesian(selectedDate);
 
   const singlesMatches = matches.filter(m => m.match_type === "singles");
   const doublesMatches = matches.filter(m => m.match_type === "doubles");
+  const groupMatches = matches.filter(isGroupStage);
+  const bracketMatches = matches.filter(isBracketStage);
 
   const handleAddRound = async (match: Match, playerNum: 1 | 2) => {
     if (!refereeName.trim()) return alert("Masukkan nama wasit terlebih dahulu!");
@@ -102,6 +110,27 @@ export default function LiveScore({ matches, onUpdate }: LiveScoreProps) {
               }`}
             >
               {t.label} ({t.count})
+            </button>
+          ))}
+        </div>
+
+        {/* Stage Filter */}
+        <div className="flex justify-center gap-2 mb-6">
+          {([
+            { key: "all" as StageFilter, label: "Semua Fase", count: matches.length },
+            { key: "group" as StageFilter, label: "🏆 Group Stage", count: groupMatches.length },
+            { key: "bracket" as StageFilter, label: "🎯 Bracket", count: bracketMatches.length },
+          ]).map(s => (
+            <button
+              key={s.key}
+              onClick={() => setStageFilter(s.key)}
+              className={`font-mono text-[10px] font-bold uppercase px-4 py-2 border-2 border-black cursor-pointer transition-all ${
+                stageFilter === s.key
+                  ? s.key === "group" ? "bg-green text-black" : s.key === "bracket" ? "bg-purple text-white" : "bg-yellow text-black"
+                  : "bg-white/10 text-white hover:bg-white/20"
+              }`}
+            >
+              {s.label} ({s.count})
             </button>
           ))}
         </div>
