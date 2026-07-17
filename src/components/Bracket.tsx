@@ -2,36 +2,68 @@
 
 import { useState, useMemo } from "react";
 import { Match } from "@/lib/supabase";
+import { DbPlayer } from "./Peserta";
 
 interface BracketProps {
+  players: DbPlayer[];
   matches: Match[];
 }
 
 type FilterType = "singles" | "doubles";
 
+interface PlayerStats {
+  name: string;
+  group: string;
+  played: number;
+  won: number;
+  lost: number;
+  pts: number;
+}
 
+interface PlacementMatch {
+  id: string;
+  player1: string;
+  player2: string;
+  score1: number;
+  score2: number;
+  status: "upcoming" | "live" | "finished";
+  match_type: "singles" | "doubles";
+  round: string;
+  scheduled_date: string | null;
+  match_order: number | null;
+  seed1: string;
+  seed2: string;
+}
 
-function SeedBadge({ seed }: { seed: string | null }) {
-  if (!seed || seed === "?") {
-    return (
-      <span className="flex-none text-[10px] font-bold text-[#9fb3c8] bg-[#33475c] rounded-[3px] px-[5px] py-[2px] min-w-[26px] text-center">
-        ?
-      </span>
-    );
-  }
+function SeedBadge({ seed }: { seed: string }) {
+  const bg =
+    seed.includes("1")
+      ? "bg-[#ffd60a]"
+      : seed.includes("2")
+        ? "bg-[#bfe3ff]"
+        : seed.includes("3")
+          ? "bg-[#ffd9a8]"
+          : seed.includes("4")
+            ? "bg-[#ffc2d4]"
+            : "bg-[#33475c]";
+
   return (
-    <span className="flex-none text-[10px] font-bold text-[#08111c] bg-[#fdf6d8] rounded-[3px] px-[5px] py-[2px] min-w-[26px] text-center">
+    <span
+      className={`flex-none text-[10px] font-bold text-[#08111c] rounded-[3px] px-[5px] py-[2px] min-w-[26px] text-center ${bg}`}
+    >
       {seed}
     </span>
   );
 }
 
 function TeamRow({
+  seed,
   name,
   score,
   isWin,
   isTbd,
 }: {
+  seed: string;
   name: string;
   score?: number;
   isWin?: boolean;
@@ -47,7 +79,7 @@ function TeamRow({
             : "text-[#e8eef5]"
       }`}
     >
-      <SeedBadge seed={name ? "?" : null} />
+      <SeedBadge seed={seed} />
       <span className="whitespace-nowrap overflow-hidden text-ellipsis flex-1">
         {name}
       </span>
@@ -67,12 +99,10 @@ function MatchCardGrid({
 }: {
   showLabel?: string;
   date?: string;
-  match?: Match;
+  match: PlacementMatch;
 }) {
-  const p1 = match?.player1 || "TBD";
-  const p2 = match?.player2 || "TBD";
-  const p1Win = match?.status === "finished" && match.score1 > match.score2;
-  const p2Win = match?.status === "finished" && match.score2 > match.score1;
+  const p1Win = match.status === "finished" && match.score1 > match.score2;
+  const p2Win = match.status === "finished" && match.score2 > match.score1;
 
   return (
     <div className="relative mt-5 mb-2">
@@ -90,16 +120,18 @@ function MatchCardGrid({
       </div>
       <div className="relative shadow-lg shadow-black/20">
         <TeamRow
-          name={p1}
-          score={match?.score1}
+          seed={match.seed1}
+          name={match.player1}
+          score={match.score1}
           isWin={p1Win}
-          isTbd={!match?.player1}
+          isTbd={!match.player1}
         />
         <TeamRow
-          name={p2}
-          score={match?.score2}
+          seed={match.seed2}
+          name={match.player2}
+          score={match.score2}
           isWin={p2Win}
-          isTbd={!match?.player2}
+          isTbd={!match.player2}
         />
       </div>
     </div>
@@ -115,7 +147,7 @@ function MatchCard({
   showLabel?: string;
   date?: string;
   hasConnector?: boolean;
-  match?: Match;
+  match?: Match | PlacementMatch;
 }) {
   const p1 = match?.player1 || "TBD";
   const p2 = match?.player2 || "TBD";
@@ -138,12 +170,14 @@ function MatchCard({
       </div>
       <div className="relative">
         <TeamRow
+          seed={"?"}
           name={p1}
           score={match?.score1}
           isWin={p1Win}
           isTbd={!match?.player1}
         />
         <TeamRow
+          seed={"?"}
           name={p2}
           score={match?.score2}
           isWin={p2Win}
@@ -158,15 +192,129 @@ function MatchCard({
   );
 }
 
-function groupByRound(matches: Match[]): Record<string, Match[]> {
-  const grouped: Record<string, Match[]> = {};
+function computeStandings(
+  players: DbPlayer[],
+  matches: Match[],
+  type: "singles" | "doubles"
+): Record<string, PlayerStats[]> {
+  const filteredPlayers = players.filter((p) => p.type === type);
+  const filteredMatches = matches.filter((m) => m.match_type === type);
+
+  const groups: Record<string, PlayerStats[]> = {};
+
+  for (const player of filteredPlayers) {
+    const g = player.group_name?.toUpperCase() || "?";
+    if (!groups[g]) groups[g] = [];
+
+    let played = 0;
+    let won = 0;
+    let lost = 0;
+
+    const finished = filteredMatches.filter(
+      (m) =>
+        m.status === "finished" &&
+        (m.player1 === player.name || m.player2 === player.name)
+    );
+
+    for (const m of finished) {
+      played++;
+      const isP1 = m.player1 === player.name;
+      const pScore = isP1 ? m.score1 : m.score2;
+      const oScore = isP1 ? m.score2 : m.score1;
+      if (pScore > oScore) won++;
+      else lost++;
+    }
+
+    groups[g].push({
+      name: player.name,
+      group: g,
+      played,
+      won,
+      lost,
+      pts: won * 2,
+    });
+  }
+
+  for (const g of Object.keys(groups)) {
+    groups[g].sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts;
+      if (b.won !== a.won) return b.won - a.won;
+      if (a.lost !== b.lost) return a.lost - b.lost;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  return groups;
+}
+
+function generatePlacementMatches(
+  standings: Record<string, PlayerStats[]>,
+  type: "singles" | "doubles",
+  existingMatches: Match[]
+): PlacementMatch[] {
+  const getPos = (group: string, pos: number): PlayerStats | undefined =>
+    standings[group]?.[pos - 1];
+
+  const existingPlacement = existingMatches.filter(
+    (m) => m.round === "Placement" && m.match_type === type
+  );
+
+  if (existingPlacement.length > 0) {
+    return existingPlacement.map((m, i) => ({
+      ...m,
+      seed1: "?",
+      seed2: "?",
+      match_order: i,
+    }));
+  }
+
+  const pairings: [string, number, string, number][] = [
+    ["A", 1, "C", 3],
+    ["B", 2, "D", 4],
+    ["C", 1, "A", 3],
+    ["D", 2, "B", 4],
+    ["B", 1, "D", 3],
+    ["A", 2, "C", 4],
+    ["D", 1, "B", 3],
+    ["C", 2, "A", 4],
+  ];
+
+  const hasStandings = Object.keys(standings).length > 0;
+
+  return pairings.map(([g1, p1, g2, p2], i) => {
+    const s1 = hasStandings ? getPos(g1, p1) : undefined;
+    const s2 = hasStandings ? getPos(g2, p2) : undefined;
+
+    return {
+      id: `placement-${type}-${i}`,
+      player1: s1?.name || "",
+      player2: s2?.name || "",
+      score1: 0,
+      score2: 0,
+      status: "upcoming" as const,
+      match_type: type,
+      round: "Placement",
+      scheduled_date: null,
+      match_order: i,
+      seed1: s1 ? `${g1}${p1}` : "?",
+      seed2: s2 ? `${g2}${p2}` : "?",
+    };
+  });
+}
+
+function groupByRound(
+  matches: (Match | PlacementMatch)[]
+): Record<string, (Match | PlacementMatch)[]> {
+  const grouped: Record<string, (Match | PlacementMatch)[]> = {};
   for (const m of matches) {
     const round = m.round || "Unknown";
     if (!grouped[round]) grouped[round] = [];
     grouped[round].push(m);
   }
   for (const key of Object.keys(grouped)) {
-    grouped[key].sort((a, b) => (a.match_order ?? 0) - (b.match_order ?? 0));
+    grouped[key].sort(
+      (a, b) => (a.match_order ?? 0) - (b.match_order ?? 0)
+    );
   }
   return grouped;
 }
@@ -186,23 +334,45 @@ function formatDate(dateStr: string | null): string {
   }
 }
 
-export default function Bracket({ matches }: BracketProps) {
+export default function Bracket({ players, matches }: BracketProps) {
   const [activeType, setActiveType] = useState<FilterType>("singles");
 
-  const filtered = useMemo(
+  const filteredMatches = useMemo(
     () => matches.filter((m) => m.match_type === activeType),
     [matches, activeType]
   );
 
-  const grouped = useMemo(() => groupByRound(filtered), [filtered]);
+  const standings = useMemo(
+    () => computeStandings(players, matches, activeType),
+    [players, matches, activeType]
+  );
+
+  const placementMatches = useMemo(
+    () => generatePlacementMatches(standings, activeType, filteredMatches),
+    [standings, activeType, filteredMatches]
+  );
+
+  const knockoutMatches = useMemo(
+    () =>
+      filteredMatches.filter(
+        (m) => m.round && m.round !== "Group Stage" && m.round !== "group"
+      ),
+    [filteredMatches]
+  );
+
+  const allBracketMatches = useMemo(
+    () => [...placementMatches, ...knockoutMatches],
+    [placementMatches, knockoutMatches]
+  );
+
+  const grouped = useMemo(
+    () => groupByRound(allBracketMatches),
+    [allBracketMatches]
+  );
 
   const roundMatches = (round: string) => grouped[round] || [];
 
-  const hasAnyKnockout = useMemo(
-    () =>
-      filtered.some((m) => m.round && m.round !== "Group Stage" && m.round !== "group"),
-    [filtered]
-  );
+  const hasStandings = Object.keys(standings).length > 0;
 
   return (
     <div className="bg-[#0d1b2a] text-[#e8eef5] font-mono min-h-screen pb-20 pt-4">
@@ -256,21 +426,25 @@ export default function Bracket({ matches }: BracketProps) {
         </div>
       </div>
 
-      {!hasAnyKnockout && (
+      {!hasStandings && (
         <div className="max-w-[1000px] mx-auto mt-8 px-5">
           <div className="bg-[#0a1420] border border-[#1e3a52] rounded-lg p-8 text-center">
             <div className="text-[#ffd60a] text-2xl mb-3">🏓</div>
             <p className="text-[#c7d6e6] text-sm mb-1">
-              Bracket <span className="font-bold text-[#ffd60a] uppercase">{activeType}</span> belum tersedia.
+              Bracket{" "}
+              <span className="font-bold text-[#ffd60a] uppercase">
+                {activeType}
+              </span>{" "}
+              belum tersedia.
             </p>
             <p className="text-[#6f879e] text-xs">
-              Bracket akan muncul setelah drawing knockout dilakukan oleh admin.
+              Selesaikan tahap Group Stage terlebih dahulu.
             </p>
           </div>
         </div>
       )}
 
-      {hasAnyKnockout && (
+      {hasStandings && (
         <>
           {/* PLACEMENT MATCHES (16 BESAR) */}
           {roundMatches("Placement").length > 0 && (
@@ -284,7 +458,7 @@ export default function Bracket({ matches }: BracketProps) {
                     key={m.id}
                     showLabel={`M${i + 1}`}
                     date={formatDate(m.scheduled_date)}
-                    match={m}
+                    match={m as PlacementMatch}
                   />
                 ))}
               </div>
@@ -310,7 +484,7 @@ export default function Bracket({ matches }: BracketProps) {
                         ? roundMatches("UB Quarter Final").map((m) => (
                             <MatchCard
                               key={m.id}
-                              showLabel={m.round}
+                              showLabel="UB QF"
                               date={formatDate(m.scheduled_date)}
                               match={m}
                             />
@@ -335,7 +509,7 @@ export default function Bracket({ matches }: BracketProps) {
                         ? roundMatches("UB Semifinal").map((m) => (
                             <MatchCard
                               key={m.id}
-                              showLabel={m.round}
+                              showLabel="UB SF"
                               date={formatDate(m.scheduled_date)}
                               match={m}
                             />
@@ -397,7 +571,7 @@ export default function Bracket({ matches }: BracketProps) {
                         ? roundMatches("LB Quarter Final").map((m) => (
                             <MatchCard
                               key={m.id}
-                              showLabel={m.round}
+                              showLabel="LB QF"
                               date={formatDate(m.scheduled_date)}
                               match={m}
                             />
@@ -422,7 +596,7 @@ export default function Bracket({ matches }: BracketProps) {
                         ? roundMatches("LB Semifinal").map((m) => (
                             <MatchCard
                               key={m.id}
-                              showLabel={m.round}
+                              showLabel="LB SF"
                               date={formatDate(m.scheduled_date)}
                               match={m}
                             />
@@ -515,6 +689,28 @@ export default function Bracket({ matches }: BracketProps) {
             </div>
           </div>
         </>
+      )}
+
+      {/* SEEDING REFERENCE */}
+      {hasStandings && (
+        <div className="max-w-[1000px] mx-auto px-5 flex flex-wrap gap-4 justify-center text-xs text-[#9fb3c8]">
+          <span className="inline-flex items-center gap-1.5">
+            <i className="w-[18px] h-3 rounded-[3px] inline-block bg-[#ffd60a]" />{" "}
+            Juara 1 grup
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <i className="w-[18px] h-3 rounded-[3px] inline-block bg-[#bfe3ff]" />{" "}
+            Juara 2 grup
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <i className="w-[18px] h-3 rounded-[3px] inline-block bg-[#ffd9a8]" />{" "}
+            Juara 3 grup
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <i className="w-[18px] h-3 rounded-[3px] inline-block bg-[#ffc2d4]" />{" "}
+            Juara 4 grup
+          </span>
+        </div>
       )}
 
       <footer className="text-center mt-12 text-[#5f7893] text-xs tracking-widest">
